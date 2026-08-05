@@ -416,29 +416,6 @@ window.BOX = (function () {
     }
     return added;
   }
-  // Writes to the shared browser document so the tracker sees it, and to the
-  // open tracker file's envelope if there is one, so a Save carries it too.
-  function markBoxAsOwned() {
-    const derived = derivedOwned();
-    let total = 0;
-    for (const k of ["w", "a", "p"])
-      for (const cat in derived.owned[k]) total += derived.owned[k][cat].size;
-
-    let added = 0;
-    const stored = readStored(AUTOSAVE_KEY);
-    const doc = isTrackerFile(stored) ? stored
-      : { app: TRACKER_APP, version: 2, showDummy: false, settings: {},
-          owned: { w: {}, a: {}, p: {} }, levels: { w: {}, a: {}, p: {} } };
-    added = mergeOwnedInto(doc, derived, false);
-    doc.savedAt = new Date().toISOString();
-    if (localSaveEnabled) {
-      doc[BOX_KEY] = Object.assign({ version: SAVE_VERSION }, boxPayload());
-      try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(doc)); } catch (e) {}
-    }
-    if (host) mergeOwnedInto(host, derived, false);
-    touched();
-    return { distinct: total, added: added, talismans: derived.talismans };
-  }
 
   // Adopt a tracker file as the host without disturbing the current box —
   // so a box laid out here can be saved back into the file the collection
@@ -581,7 +558,6 @@ window.BOX = (function () {
     sortBox, canUndoSort, undoSort,
     serializeSave, validateSave, applySave, reset,
     isTrackerFile, boxSectionOf, isHosted, adoptHost, detachHost, attachHost,
-    markBoxAsOwned,
     isDirty, clearDirty, on,
     scheduleAutosave, flushAutosave, readLocalSave,
     setLocalSaveEnabled, isLocalSaveEnabled, clearLocalSave,

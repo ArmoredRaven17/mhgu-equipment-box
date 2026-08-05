@@ -229,25 +229,6 @@
     toast("Save will now write one file holding both the collection and the box.", 4200);
   });
 
-  // Everything sitting in the box is something you have, so it can mark the
-  // collection outright. Only ever adds. The same merge runs on every autosave
-  // while the sync setting is on; this is the manual, one-shot version.
-  $("markOwnedBtn").addEventListener("click", () => {
-    if (!BOX.usedCount("player") && !BOX.usedCount("palico")) {
-      toast("The box is empty — nothing to mark.");
-      return;
-    }
-    UI.confirm("Mark everything in this box as owned?",
-      "Every piece in both boxes is added to your collection. Nothing is ever un-owned, "
-      + "so a collection wider than the box keeps everything it already had. "
-      + "Talismans are skipped — the tracker has no category for them.",
-      () => {
-        const r = BOX.markBoxAsOwned();
-        syncFileMode();
-        toast(`${fmt(r.distinct)} distinct piece(s) in the box — ${fmt(r.added)} newly owned`
-          + (r.talismans ? `, ${fmt(r.talismans)} talisman(s) skipped` : "") + ".", 5000);
-      });
-  });
 
   toggleSyncs.push(bindToggle("localSaveToggle", BOX.isLocalSaveEnabled, v => {
     BOX.setLocalSaveEnabled(v);
