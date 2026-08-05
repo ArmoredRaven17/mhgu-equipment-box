@@ -116,7 +116,7 @@ const levels = { aMax: {}, wMax: {}, wNames: {} };
 // The game's table records a piece's upgrade levels against the canonical
 // (male) id only; its female counterpart reads back as 1. Those are the same
 // piece, so the pairing fills them in — see the pass after the gender section.
-const armorMaxStats = { table: 0, fromPair: 0, byRarity: 0, unresolved: 0 };
+const armorMaxStats = { table: 0, fromPair: 0, noUpgrades: 0, byRarity: 0, unresolved: 0 };
 
 for (const type of Object.keys(ARMOR_SLOT_KEY)) {
   slots.a[type] = {};
@@ -128,6 +128,13 @@ for (const type of Object.keys(ARMOR_SLOT_KEY)) {
     if (max > 1) { levels.aMax[type][id] = max; armorMaxStats.table++; }
   }
 }
+// "The table says 1" and "the table has never heard of it" have to stay
+// distinguishable: aMax only carries values above 1, so without this the
+// fallbacks below would happily overrule a real recorded 1 — which is what
+// Zero Suit and other costume gear genuinely is.
+const armorInTable = {};
+for (const type of Object.keys(ARMOR_SLOT_KEY))
+  armorInTable[type] = new Set(Object.keys(ARMOR_LEVELS[ARMOR_LEVEL_KEY[type]] || {}));
 
 for (const [type] of WEAPON_TYPES) {
   slots.w[type] = {};
@@ -264,9 +271,15 @@ for (const type of Object.keys(ARMOR_SLOT_KEY)) {
 for (const type of Object.keys(ARMOR_SLOT_KEY)) {
   for (const [rawId, name] of Object.entries(ARMOR[ARMOR_SLOT_KEY[type]])) {
     if (levels.aMax[type][rawId] !== undefined) continue;
+    // A female variant and a genuinely un-upgradeable costume piece both read
+    // back as 1, so presence in the table can't separate them — the pairing can.
+    // Take the pair's levels first; only what has no levelled pair falls through.
     const mate = pair[type][rawId];
     const fromPair = mate !== undefined ? levels.aMax[type][mate] : undefined;
     if (fromPair > 1) { levels.aMax[type][rawId] = fromPair; armorMaxStats.fromPair++; continue; }
+    // Still 1, and the game did record it: that's an answer, not a gap. Zero Suit
+    // and other costume gear lands here and must not be talked out of it.
+    if (armorInTable[type].has(rawId)) { armorMaxStats.noUpgrades++; continue; }
     const guess = armorMaxByRarity(name, rarity.a[type][rawId] || 0);
     if (guess > 1) { levels.aMax[type][rawId] = guess; armorMaxStats.byRarity++; }
     else armorMaxStats.unresolved++;
@@ -328,8 +341,9 @@ console.log(`  gendered     ${count(gender)} (${count(pair)} paired)`);
 console.log(`  kinsects     ${kinsects.length} (${kinsects.filter(k => k.dlc).length} DLC-locked), ` +
   `${Object.keys(IG_KINSECT_TYPE).length} glaives mapped`);
 console.log(`  armor levels ${armorMaxStats.table} from the game's table, ` +
-  `${armorMaxStats.fromPair} inherited from a gender pair, ${armorMaxStats.byRarity} by rarity, ` +
-  `${armorMaxStats.unresolved} left at 1`);
+  `${armorMaxStats.fromPair} inherited from a gender pair, ` +
+  `${armorMaxStats.noUpgrades} recorded as un-upgradeable, ` +
+  `${armorMaxStats.byRarity} by rarity, ${armorMaxStats.unresolved} unknown`);
 console.log(`  rarity rule  agrees with the table on ${ruleChecked - ruleDisagreed} of ${ruleChecked} ids` +
   (ruleDisagreed ? "  <-- WARNING: no longer a safe fallback" : ""));
 
