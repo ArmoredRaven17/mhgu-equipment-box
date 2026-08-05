@@ -1,0 +1,18 @@
+node_modules/
+*.log
+Thumbs.db
+.DS_Store
+# Offline generator inputs (large source data, not redistributed — see NOTICE.md)
+data-src/
+
+# Game dumps / extracted game files — never redistribute these. Keep them in
+# data-src/ (or outside the repo); only generated JSON in docs/data/ is committed.
+*.xci
+*.nsp
+*.nca
+*.nsz
+*.arc
+*.romfs
+*.keys
+romfs/
+extracted/
