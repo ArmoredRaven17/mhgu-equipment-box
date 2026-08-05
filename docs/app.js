@@ -360,6 +360,14 @@
     BOX.setLocalSaveEnabled(v);
     toast(v ? "Saving your box in this browser." : "Browser save turned off and cleared.");
   }));
+  toggleSyncs.push(bindToggle("syncCollectionToggle",
+    () => BOX.settings.syncCollection,
+    v => {
+      BOX.settings.syncCollection = v;
+      BOX.saveSettings();
+      if (v) { BOX.flushAutosave(); toast("The collection will follow the box from now on."); }
+      else toast("The box will no longer update the collection.");
+    }));
   toggleSyncs.push(bindToggle("confirmSortToggle",
     () => BOX.settings.confirmSort,
     v => { BOX.settings.confirmSort = v; BOX.saveSettings(); }));
