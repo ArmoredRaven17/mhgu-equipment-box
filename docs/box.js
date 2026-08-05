@@ -441,8 +441,8 @@ window.BOX = (function () {
   }
 
   // Adopt a tracker file as the host without disturbing the current box —
-  // used by the Import Collection flow so the import can be saved back into the
-  // same file it came from.
+  // so a box laid out here can be saved back into the file the collection
+  // came from.
   function adoptHost(obj) {
     if (!isTrackerFile(obj)) return false;
     host = Object.assign({}, obj);
@@ -567,63 +567,10 @@ window.BOX = (function () {
     "w:insect_glaive": 20, "w:charge_blade": 21,
     "p:weapon": 22, "p:head": 23, "p:body": 24,
   };
-  function validateTrackerSave(obj) {
-    if (!obj || typeof obj !== "object") return "Not a valid file.";
-    if (obj.app !== "mhgu-collection-tracker") return "This isn't an MHGU Collection Tracker save.";
-    if (!obj.owned || typeof obj.owned !== "object") return "Save file is missing collection data.";
-    return null;
-  }
   // Flatten a tracker save into placeable items, in in-game box order.
   // `unspecified` decides what an owned-but-unlevelled piece becomes: "min" (LV1)
   // or "max". The tracker's levels are 1-based; ours are 0-based.
-  function trackerItems(obj, unspecified) {
-    const out = [];
-    for (const kind of ["w", "a", "p"]) {
-      const bucket = obj.owned[kind];
-      if (!bucket || typeof bucket !== "object") continue;
-      const levels = (obj.levels && obj.levels[kind]) || {};
-      for (const key in bucket) {
-        const type = TRACKER_TYPE[kind + ":" + key];
-        if (!type) continue;
-        const ids = bucket[key];
-        if (!Array.isArray(ids)) continue;
-        const lvMap = levels[key] || {};
-        for (const id of ids) {
-          if (!Number.isInteger(id) || !DB.isKnown(type, id)) continue;
-          const max = DB.maxLevel(type, id);
-          const tracked = Number(lvMap[id]) || 0;
-          const lv1 = tracked > 0 ? Math.min(tracked, max) : (unspecified === "max" ? max : 1);
-          out.push({
-            type: type, id: id, level: lv1 - 1,
-            rarity: DB.rarityOf({ equip_type: type, equip_id: id }),
-            box: DB.isPalico(type) ? "palico" : "player",
-          });
-        }
-      }
-    }
-    out.sort((a, b) =>
-      (DB.typeSortPos(a.type) - DB.typeSortPos(b.type)) || (a.rarity - b.rarity) || (a.id - b.id));
-    return out;
-  }
   // Place as many as will fit, never displacing what is already there.
-  function placeItems(items, from) {
-    const placed = { player: 0, palico: 0 };
-    const skipped = [];
-    const at = { player: from && from.player || 0, palico: from && from.palico || 0 };
-    for (const it of items) {
-      const kind = it.box;
-      const i = firstEmpty(kind, at[kind]);
-      if (i < 0) { skipped.push(it); continue; }
-      const e = makeEntry(it.type, it.id);
-      e.level = it.level;
-      e.deco_slots = DB.entryDecoSlots(e);
-      boxes[kind][i] = e;
-      at[kind] = i + 1;
-      placed[kind]++;
-    }
-    if (placed.player || placed.palico) touched();
-    return { placed: placed, skipped: skipped };
-  }
 
   return {
     PLAYER_SIZE, PALICO_SIZE, PAGE_SIZE, COLS, SORT_KEYS,
@@ -639,6 +586,6 @@ window.BOX = (function () {
     scheduleAutosave, flushAutosave, readLocalSave,
     setLocalSaveEnabled, isLocalSaveEnabled, clearLocalSave,
     settings, saveSettings,
-    validateTrackerSave, trackerItems, placeItems, TRACKER_TYPE,
+    TRACKER_TYPE,
   };
 })();
