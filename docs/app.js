@@ -321,6 +321,7 @@
       ? "Save writes the whole file back — your collection is kept exactly as it was, with the box stored alongside it."
       : "Save writes an equipment box file of its own.";
     $("detachBtn").classList.toggle("hidden", !hosted);
+    $("attachBtn").classList.toggle("hidden", hosted);
   }
   $("settingsBtn").addEventListener("click", syncFileMode);
   $("detachBtn").addEventListener("click", () => {
@@ -328,6 +329,31 @@
     fileHandle = null;   // don't write a box file over the collection file
     syncFileMode();
     toast("Save will now write a standalone box file.");
+  });
+  $("attachBtn").addEventListener("click", () => {
+    BOX.attachHost();
+    fileHandle = null;   // a different file now; make Save ask where
+    syncFileMode();
+    toast("Save will now write one file holding both the collection and the box.", 4200);
+  });
+
+  // The mirror of Import Collection: everything sitting in the box is something
+  // you have, so it can mark the collection. Only ever adds.
+  $("markOwnedBtn").addEventListener("click", () => {
+    if (!BOX.usedCount("player") && !BOX.usedCount("palico")) {
+      toast("The box is empty — nothing to mark.");
+      return;
+    }
+    UI.confirm("Mark everything in this box as owned?",
+      "Every piece in both boxes is added to your collection. Nothing is ever un-owned, "
+      + "so a collection wider than the box keeps everything it already had. "
+      + "Talismans are skipped — the tracker has no category for them.",
+      () => {
+        const r = BOX.markBoxAsOwned();
+        syncFileMode();
+        toast(`${fmt(r.distinct)} distinct piece(s) in the box — ${fmt(r.added)} newly owned`
+          + (r.talismans ? `, ${fmt(r.talismans)} talisman(s) skipped` : "") + ".", 5000);
+      });
   });
 
   toggleSyncs.push(bindToggle("localSaveToggle", BOX.isLocalSaveEnabled, v => {

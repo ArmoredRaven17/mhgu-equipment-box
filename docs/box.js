@@ -366,6 +366,78 @@ window.BOX = (function () {
     sortUndo = null;
     emit("change");
   }
+  // ── Box -> collection ──────────────────────────────────────────────────
+  // Anything sitting in the box is something you have, so the box can mark the
+  // collection. Strictly a union: it never un-owns anything, because the box is
+  // a subset of a collection (gear can be equipped, or simply not stored here).
+  // Talismans are skipped — they are rolled, and have no tracker category.
+  function derivedOwned() {
+    const owned = { w: {}, a: {}, p: {} }, levelsOut = { w: {}, a: {}, p: {} };
+    let talismans = 0;
+    const byType = {};
+    for (const k in TRACKER_TYPE) byType[TRACKER_TYPE[k]] = k;
+    for (const kind of ["player", "palico"]) {
+      for (const e of boxes[kind]) {
+        if (!e) continue;
+        if (e.equip_type === 6) { talismans++; continue; }
+        const key = byType[e.equip_type];
+        if (!key) continue;
+        const [k, cat] = key.split(":");
+        (owned[k][cat] || (owned[k][cat] = new Set())).add(e.equip_id);
+        const lv = (e.level || 0) + 1;   // the tracker counts from 1
+        const map = levelsOut[k][cat] || (levelsOut[k][cat] = {});
+        if (!map[e.equip_id] || lv > map[e.equip_id]) map[e.equip_id] = lv;
+      }
+    }
+    return { owned, levels: levelsOut, talismans };
+  }
+  // Merge into a document's collection without removing anything already there.
+  function mergeOwnedInto(doc, derived) {
+    let added = 0;
+    doc.owned = doc.owned || { w: {}, a: {}, p: {} };
+    doc.levels = doc.levels || { w: {}, a: {}, p: {} };
+    for (const k of ["w", "a", "p"]) {
+      doc.owned[k] = doc.owned[k] || {};
+      doc.levels[k] = doc.levels[k] || {};
+      for (const cat in derived.owned[k]) {
+        const have = new Set(Array.isArray(doc.owned[k][cat]) ? doc.owned[k][cat] : []);
+        for (const id of derived.owned[k][cat]) if (!have.has(id)) { have.add(id); added++; }
+        doc.owned[k][cat] = [...have].sort((a, b) => a - b);
+      }
+      for (const cat in derived.levels[k]) {
+        const map = doc.levels[k][cat] || (doc.levels[k][cat] = {});
+        for (const id in derived.levels[k][cat]) {
+          const lv = derived.levels[k][cat][id];
+          if (!map[id] || lv > map[id]) map[id] = lv;
+        }
+      }
+    }
+    return added;
+  }
+  // Writes to the shared browser document so the tracker sees it, and to the
+  // open tracker file's envelope if there is one, so a Save carries it too.
+  function markBoxAsOwned() {
+    const derived = derivedOwned();
+    let total = 0;
+    for (const k of ["w", "a", "p"])
+      for (const cat in derived.owned[k]) total += derived.owned[k][cat].size;
+
+    let added = 0;
+    const stored = readStored(AUTOSAVE_KEY);
+    const doc = isTrackerFile(stored) ? stored
+      : { app: TRACKER_APP, version: 2, showDummy: false, settings: {},
+          owned: { w: {}, a: {}, p: {} }, levels: { w: {}, a: {}, p: {} } };
+    added = mergeOwnedInto(doc, derived);
+    doc.savedAt = new Date().toISOString();
+    if (localSaveEnabled) {
+      doc[BOX_KEY] = Object.assign({ version: SAVE_VERSION }, boxPayload());
+      try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(doc)); } catch (e) {}
+    }
+    if (host) mergeOwnedInto(host, derived);
+    touched();
+    return { distinct: total, added: added, talismans: derived.talismans };
+  }
+
   // Adopt a tracker file as the host without disturbing the current box —
   // used by the Import Collection flow so the import can be saved back into the
   // same file it came from.
@@ -381,6 +453,24 @@ window.BOX = (function () {
   function detachHost() {
     if (!host) return false;
     host = null;
+    touched();
+    return true;
+  }
+  // And the way in. Opening a standalone box file drops the association, so
+  // without this a box that started life as its own file could never become a
+  // shared one — saving it again just produced another file the tracker
+  // refuses. Takes the collection from the shared browser document when there
+  // is one, so attaching doesn't blank out a collection that already exists.
+  function attachHost() {
+    if (host) return false;
+    const stored = readStored(AUTOSAVE_KEY);
+    if (isTrackerFile(stored)) {
+      host = Object.assign({}, stored);
+      delete host[BOX_KEY];
+    } else {
+      host = { app: TRACKER_APP, version: 2, showDummy: false, settings: {},
+               owned: { w: {}, a: {}, p: {} }, levels: { w: {}, a: {}, p: {} } };
+    }
     touched();
     return true;
   }
@@ -533,7 +623,8 @@ window.BOX = (function () {
     copyToClipboard, cutToClipboard, pasteClipboard, clipboardSize, clearClipboard,
     sortBox, canUndoSort, undoSort,
     serializeSave, validateSave, applySave, reset,
-    isTrackerFile, boxSectionOf, isHosted, adoptHost, detachHost,
+    isTrackerFile, boxSectionOf, isHosted, adoptHost, detachHost, attachHost,
+    markBoxAsOwned,
     isDirty, clearDirty, on,
     scheduleAutosave, flushAutosave, readLocalSave,
     setLocalSaveEnabled, isLocalSaveEnabled, clearLocalSave,
