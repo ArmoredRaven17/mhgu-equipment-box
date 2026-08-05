@@ -42,7 +42,10 @@
     ["K. Daora", "#505358", "Kushala Daora"], ["Valstrax", "#aeb5c1"],
     ["Forbidden", "#1E2025", "Question Mark"],
   ];
-  const monsterIcon = name => `assets/MonsterIcons/MHGU-${name.replace(/ /g, "_")}_Icon.webp`;
+  const COLORS_HEX = Object.fromEntries(THEME_COLORS.map(([name, hex]) => [hex.toUpperCase(), name]));
+  const COLORS_ICON = Object.fromEntries(THEME_COLORS.filter(c => c[2]).map(([name, , icon]) => [name, icon]));
+  const FALLBACK_ICON = "assets/MonsterIcons/MHGU-Question_Mark_Icon.webp";
+  const monsterIcon = name => name ? "assets/MonsterIcons/MHGU-" + name.replace(/ /g, "_") + "_Icon.webp" : FALLBACK_ICON;
 
   const hexRgb = h => { h = h.replace("#", ""); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)); };
   const clamp = n => Math.max(0, Math.min(255, Math.round(n)));
@@ -79,6 +82,13 @@
     r.setProperty("--accent-hover", cssRgb(lighten(c, .4)));
     try { localStorage.setItem(THEME_KEY, hex); } catch (e) {}
     document.querySelectorAll(".swatch").forEach(s => s.classList.toggle("sel", s.dataset.hex === hex));
+    // The title icon follows the theme, as in the collection tracker — the
+    // monster the colour is named after, not a fixed weapon.
+    const titleIcon = document.querySelector(".title-icon");
+    if (titleIcon) {
+      const name = COLORS_HEX[hex.toUpperCase()];
+      titleIcon.src = name ? monsterIcon(COLORS_ICON[name] || name) : FALLBACK_ICON;
+    }
   }
   function buildSwatches() {
     const wrap = $("swatches");
