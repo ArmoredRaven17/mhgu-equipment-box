@@ -173,8 +173,11 @@
   function bindModal(btnId, modalId, closeId) {
     $(btnId).addEventListener("click", () => $(modalId).classList.remove("hidden"));
     $(closeId).addEventListener("click", () => $(modalId).classList.add("hidden"));
+    // Honours the same setting as the slot editor and the confirm dialogs.
+    // These three ignored it, which made the setting look like it did nothing —
+    // they are the ones you would naturally test it with.
     $(modalId).addEventListener("click", e => {
-      if (e.target.id === modalId) $(modalId).classList.add("hidden");
+      if (e.target.id === modalId && BOX.settings.backdropClose) $(modalId).classList.add("hidden");
     });
   }
 
