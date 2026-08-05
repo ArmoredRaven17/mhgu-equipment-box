@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MHGU Equipment Box</title>
 <link rel="icon" type="image/png" href="assets/icons/icon_talisman_r1.png">
-<link rel="stylesheet" href="styles.css?v=8">
+<link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
 <div id="app">
@@ -56,9 +56,11 @@
 
     <div class="box-nav-actions">
       <span id="selectHint" class="move-hint hidden"></span>
-      <button id="pasteBtn" class="nav-btn" disabled>Paste Selection</button>
-      <button id="clearClipBtn" class="nav-btn" disabled>Clear Saved Selection</button>
-      <button id="clearBoxBtn" class="nav-btn">Empty Box</button>
+      <div class="box-nav-group">
+        <button id="pasteBtn" class="nav-btn" disabled>Paste Selection</button>
+        <button id="clearClipBtn" class="nav-btn" disabled>Clear Saved Selection</button>
+        <button id="clearBoxBtn" class="nav-btn">Empty Box</button>
+      </div>
     </div>
   </div>
 
