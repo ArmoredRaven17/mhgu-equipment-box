@@ -97,9 +97,20 @@ window.UI = (function () {
         c.lv.classList.remove("hidden");
       } else c.lv.classList.add("hidden");
 
-      const used = DB.decoUsed(e.decorations);
-      if (used) { c.deco.textContent = "◆".repeat(Math.min(3, e.decorations.filter(Boolean).length)); c.deco.classList.remove("hidden"); }
-      else c.deco.classList.add("hidden");
+      // One segment per slot the piece offers, lit for each slot point spent.
+      // Shown whenever it has slots at all, empty ones included — that is the
+      // whole reason for the strip over a glyph.
+      const slots = DB.entryDecoSlots(e);
+      if (slots) {
+        const used = Math.min(slots, DB.decoUsed(e.decorations));
+        if (c.deco.childElementCount !== slots) {
+          c.deco.innerHTML = "";
+          for (let s = 0; s < slots; s++) c.deco.appendChild(document.createElement("span"));
+        }
+        c.deco.style.setProperty("--slots", String(slots));
+        for (let s = 0; s < slots; s++) c.deco.children[s].className = s < used ? "on" : "";
+        c.deco.classList.remove("hidden");
+      } else c.deco.classList.add("hidden");
 
       c.el.title = `Slot ${f} — ` + (DB.isTransmogged(e)
         ? `${DB.displayName(e)} [Visual: ${DB.transmogName(e)}]`
