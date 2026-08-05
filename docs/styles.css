@@ -71,14 +71,20 @@ kbd{
 }
 
 /* ── Box toolbar ─────────────────────────────────────────────────────── */
+/* Not banner-background.png: that texture carries a dark vertical band in its
+   first ~20px, which lands right at the left edge of the toolbar. Offsetting it
+   only moves the problem — the tile is 1316px wide once scaled to this height,
+   so the band reappears mid-bar on a wide window. The sidebar texture is flat
+   across its width instead. Left at natural size, too: scaling it to the bar's
+   height would make a 306px tile into a 37px one and read as stripes. */
 .box-nav{
   display:flex;flex-direction:column;gap:6px;padding:7px 14px;flex-shrink:0;
   border-bottom:1px solid var(--line);font-size:12px;
   background-color:var(--bg2);
   background-image:
     linear-gradient(color-mix(in srgb,var(--bg2) 82%,transparent),color-mix(in srgb,var(--bg2) 82%,transparent)),
-    url('assets/banner-background.png');
-  background-size:auto 100%;background-position:left center;background-repeat:repeat;
+    url('assets/sidebar-background-texture1.png');
+  background-size:auto;background-position:left center;background-repeat:repeat;
 }
 .box-nav-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
 .box-nav-sort{display:flex;align-items:center;gap:6px;margin-left:auto}
