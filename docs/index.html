@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MHGU Equipment Box</title>
 <link rel="icon" type="image/png" href="assets/icons/icon_talisman_r1.png">
-<link rel="stylesheet" href="styles.css?v=6">
+<link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
 <div id="app">
@@ -120,9 +120,11 @@
     <dl class="help-list">
       <dt>Click</dt><dd>Inspect a slot</dd>
       <dt>Double-click</dt><dd>Edit a slot — on an empty one, add equipment</dd>
+      <dt>Drag</dt><dd>Swap two slots. Hold the drag over <b>Prev</b> or <b>Next</b> to turn the page mid-drag</dd>
+      <dt><kbd>Ctrl</kbd> + drag</dt><dd>Drop a copy instead of swapping</dd>
       <dt><kbd>Shift</kbd> + click</dt><dd>Swap the cursor slot with the one clicked</dd>
       <dt><kbd>Ctrl</kbd> + click</dt><dd>Copy the cursor slot into the one clicked</dd>
-      <dt><kbd>Alt</kbd> + click</dt><dd>Set a range anchor</dd>
+      <dt><kbd>Alt</kbd> + click twice</dt><dd>Select that range and enter Select Mode</dd>
     </dl>
 
     <div class="set-title">Keyboard</div>
@@ -140,6 +142,7 @@
     <dl class="help-list">
       <dt>Click</dt><dd>Add or remove a slot from the selection</dd>
       <dt><kbd>Alt</kbd> + click twice</dt><dd>Select everything between the two slots</dd>
+      <dt>Drag a selected slot</dt><dd>Move the whole selection to where you drop it</dd>
       <dt><kbd>Shift</kbd> + click</dt><dd>Move the selection to that slot</dd>
       <dt><kbd>Ctrl</kbd> + click</dt><dd>Copy the selection to that slot</dd>
     </dl>
@@ -240,7 +243,7 @@
 <script src="db.js?v=2"></script>
 <script src="box.js?v=2"></script>
 <script src="edit.js?v=2"></script>
-<script src="ui.js?v=4"></script>
+<script src="ui.js?v=5"></script>
 <script src="app.js?v=2"></script>
 </body>
 </html>

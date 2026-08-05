@@ -19,6 +19,8 @@ window.UI = (function () {
   let multiSelect = false;
   const selection = new Set();
   let pendingOp = null;     // "move" | "copy" while choosing a destination
+  let dragFrom = null;      // flat index being dragged
+  let dragWholeSelection = false;
   let toastFn = () => {};
 
   const flat = i => page * PAGE + i;
@@ -103,6 +105,10 @@ window.UI = (function () {
         ? `${DB.displayName(e)} [Visual: ${DB.transmogName(e)}]`
         : DB.displayName(e));
     }
+
+    // Only a filled slot can start a drag; empty ones are drop targets only.
+    c.el.draggable = !!e;
+    if (dragFrom === f) cls.push("drag-source");
 
     if (multiSelect && selection.has(f)) cls.push(cursor === f ? "cursor-selected" : "multi-selected");
     else if (cursor === f && anchor !== f) cls.push("cursor");
@@ -191,11 +197,33 @@ window.UI = (function () {
       } else doCopy();
       return;
     }
+    // Alt+click twice outside Select Mode drops straight into it with the range
+    // between the two clicks selected — the editor's way in, and the only one
+    // that doesn't need the toolbar button.
+    if (ev.altKey && anchor !== null) {
+      selectRange(anchor, f);
+      return;
+    }
     if (ev.altKey) { anchor = f; cursor = f; paintPage(); return; }
 
     anchor = null;
     cursor = f;
     select(f);
+  }
+
+  // Replace the selection with everything between two slots, entering Select
+  // Mode if it isn't already on.
+  function selectRange(from, to) {
+    const lo = Math.min(from, to), hi = Math.max(from, to);
+    selection.clear();
+    for (let i = lo; i <= hi; i++) selection.add(i);
+    anchor = null;
+    cursor = to;
+    selected = null;
+    setMultiSelect(true);
+    paintPage();
+    renderDetail();
+    updateHints();
   }
 
   function select(f) {
@@ -237,14 +265,19 @@ window.UI = (function () {
     } else apply();
   }
 
+  // Kept separate from toggleMultiSelect so entering the mode via an Alt+click
+  // range doesn't wipe the selection that click just made.
+  function setMultiSelect(on) {
+    multiSelect = on;
+    $("selectMode").classList.toggle("active", on);
+    $("selectMode").textContent = on ? "Done" : "Select Mode";
+  }
   function toggleMultiSelect() {
-    multiSelect = !multiSelect;
+    setMultiSelect(!multiSelect);
     selection.clear();
     anchor = null;
     pendingOp = null;
     if (multiSelect) selected = null;
-    $("selectMode").classList.toggle("active", multiSelect);
-    $("selectMode").textContent = multiSelect ? "Done" : "Select Mode";
     paintPage();
     renderDetail();
     updateHints();
@@ -445,6 +478,116 @@ window.UI = (function () {
   const row = (k, v, raw) =>
     `<div class="stat-row"><span class="k">${raw ? k : esc(k)}</span><span class="v">${raw ? v : esc(v)}</span></div>`;
 
+  // ── Drag and drop ──────────────────────────────────────────────────────
+  // Drag a slot onto another to swap them; hold Ctrl to copy instead. In Select
+  // Mode, dragging any selected slot carries the whole selection. The box is 20
+  // pages deep, so hovering the page buttons mid-drag turns the page.
+  const dragOverEl = () => $("grid").querySelector(".box-cell.drag-over");
+  function markDragOver(el) {
+    const prev = dragOverEl();
+    if (prev === el) return;
+    if (prev) prev.classList.remove("drag-over");
+    if (el) el.classList.add("drag-over");
+  }
+  function endDrag() {
+    dragFrom = null;
+    dragWholeSelection = false;
+    stopPageHold();
+    markDragOver(null);
+    paintPage();
+  }
+
+  // Hovering Prev/Next during a drag pages the box, slowly enough to aim.
+  let pageHoldTimer = null;
+  function startPageHold(dir) {
+    if (pageHoldTimer) return;
+    goPage(page + dir);
+    pageHoldTimer = setInterval(() => goPage(page + dir), 700);
+  }
+  function stopPageHold() {
+    clearInterval(pageHoldTimer);
+    pageHoldTimer = null;
+  }
+
+  function cellFrom(ev) {
+    const el = ev.target.closest ? ev.target.closest(".box-cell") : null;
+    if (!el) return null;
+    const f = flat(Number(el.dataset.i));
+    return f < BOX.sizeOf(kind) ? { el: el, f: f } : null;
+  }
+
+  function initDrag() {
+    const grid = $("grid");
+
+    grid.addEventListener("dragstart", ev => {
+      const hit = cellFrom(ev);
+      if (!hit || !BOX.get(kind, hit.f)) { ev.preventDefault(); return; }
+      dragFrom = hit.f;
+      dragWholeSelection = multiSelect && selection.has(hit.f) && selection.size > 1;
+      ev.dataTransfer.effectAllowed = "copyMove";
+      // Firefox refuses to start a drag without payload.
+      ev.dataTransfer.setData("text/plain", String(hit.f));
+      hit.el.classList.add("drag-source");
+    });
+
+    grid.addEventListener("dragover", ev => {
+      if (dragFrom === null) return;
+      const hit = cellFrom(ev);
+      if (!hit) return;
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = (ev.ctrlKey || ev.metaKey) ? "copy" : "move";
+      markDragOver(hit.el);
+    });
+
+    grid.addEventListener("dragleave", ev => {
+      const hit = cellFrom(ev);
+      if (hit && hit.el === dragOverEl() && !hit.el.contains(ev.relatedTarget)) markDragOver(null);
+    });
+
+    grid.addEventListener("drop", ev => {
+      ev.preventDefault();
+      const hit = cellFrom(ev);
+      const src = dragFrom;
+      const copy = ev.ctrlKey || ev.metaKey;
+      const whole = dragWholeSelection;
+      endDrag();
+      if (!hit || src === null) return;
+      const dst = hit.f;
+
+      if (whole) { applyOp(copy ? "copy" : "move", dst); return; }
+      if (dst === src) return;
+
+      const target = BOX.get(kind, dst);
+      if (copy) {
+        const doCopy = () => { BOX.copy(kind, src, dst); repaint(dst); select(dst); updateCapacity(); };
+        if (target) {
+          confirm("Overwrite slot?",
+            `Slot ${dst} holds <strong>${esc(DB.displayName(target))}</strong>. Replace it with a copy?`, doCopy);
+        } else doCopy();
+        return;
+      }
+      // Plain drag swaps, so nothing is ever destroyed by dropping.
+      BOX.swap(kind, src, dst);
+      cursor = dst;
+      repaint(src); repaint(dst);
+      select(dst);
+    });
+
+    grid.addEventListener("dragend", endDrag);
+
+    [["prevPage", -1], ["nextPage", 1]].forEach(([id, dir]) => {
+      const btn = $(id);
+      btn.addEventListener("dragover", ev => {
+        if (dragFrom === null) return;
+        ev.preventDefault();
+        ev.dataTransfer.dropEffect = "move";
+        startPageHold(dir);
+      });
+      btn.addEventListener("dragleave", stopPageHold);
+      btn.addEventListener("drop", ev => { ev.preventDefault(); stopPageHold(); });
+    });
+  }
+
   // ── Editing ────────────────────────────────────────────────────────────
   function openEditor(f) {
     EDIT.open(kind, f, BOX.get(kind, f), (at, entry) => {
@@ -516,6 +659,8 @@ window.UI = (function () {
       const f = flat(Number(el.dataset.i));
       if (f < BOX.sizeOf(kind)) openEditor(f);
     });
+
+    initDrag();
 
     $("boxSwitch").querySelectorAll("button").forEach(b =>
       b.addEventListener("click", () => setKind(b.dataset.box)));

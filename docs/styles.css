@@ -209,6 +209,14 @@ kbd{
   background:linear-gradient(to bottom,rgba(0,60,200,.3) 0%,rgba(255,220,0,.3) 100%)
 }
 
+.box-cell[draggable="true"]{cursor:grab}
+.box-cell.drag-source{opacity:.35;cursor:grabbing}
+.box-cell.drag-over{
+  border-color:#80c0ff !important;
+  box-shadow:inset 0 0 0 2px #4a8acc;
+  filter:brightness(1.3)
+}
+
 .box-cell.selected{border-color:#fff !important;box-shadow:inset 0 0 0 1px #fff}
 .box-cell.cursor{outline:2px solid #aaaaff;outline-offset:-2px}
 .box-cell.multi-selected{outline:2px solid #4c4;outline-offset:-2px}
