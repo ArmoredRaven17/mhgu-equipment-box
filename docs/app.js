@@ -97,17 +97,18 @@
 
   // ── File save / load ───────────────────────────────────────────────────
   const supportsFsApi = "showSaveFilePicker" in window;
-  const saveOpts = {
-    suggestedName: "mhgu-equipment-box.json",
-    types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
-  };
+  const JSON_TYPES = [{ description: "JSON", accept: { "application/json": [".json"] } }];
+  // Working inside a tracker file? Then Save writes that file back, so suggest
+  // its name rather than the box's.
+  const saveName = () => (BOX.isHosted() ? "mhgu-collection.json" : "mhgu-equipment-box.json");
+  const saveOpts = () => ({ suggestedName: saveName(), types: JSON_TYPES });
   let fileHandle = null;
 
   async function saveToFile(forceNew) {
     const data = JSON.stringify(BOX.serializeSave(), null, 2);
     if (supportsFsApi) {
       try {
-        if (forceNew || !fileHandle) fileHandle = await window.showSaveFilePicker(saveOpts);
+        if (forceNew || !fileHandle) fileHandle = await window.showSaveFilePicker(saveOpts());
         const w = await fileHandle.createWritable();
         await w.write(data);
         await w.close();
@@ -116,7 +117,7 @@
         return;
       } catch (e) { if (e && e.name === "AbortError") return; /* else fall through */ }
     }
-    downloadBlob(data, "mhgu-equipment-box.json");
+    downloadBlob(data, saveName());
     BOX.clearDirty();
     toast("Downloaded save file.");
   }
@@ -130,7 +131,7 @@
   async function openFile() {
     if (supportsFsApi) {
       try {
-        const [h] = await window.showOpenFilePicker({ types: saveOpts.types });
+        const [h] = await window.showOpenFilePicker({ types: JSON_TYPES });
         fileHandle = h;
         loadFromText(await (await h.getFile()).text());
         return;
@@ -141,19 +142,20 @@
   function loadFromText(text) {
     let obj;
     try { obj = JSON.parse(text); } catch (e) { toast("That file isn't valid JSON."); return; }
-    // A tracker save opened here is almost certainly a mis-click on the wrong
-    // button rather than a bad file — say so instead of "not a box save".
-    if (obj && obj.app === "mhgu-collection-tracker") {
-      toast("That's a Collection Tracker save — use Import Collection.", 4000);
-      return;
-    }
     const err = BOX.validateSave(obj);
     if (err) { toast(err); return; }
+    // A tracker file carries the box in its own section, and everything else in
+    // it is preserved when this app saves — so one file can serve both.
+    const hosted = BOX.isTrackerFile(obj);
+    const hadBox = hosted && !!BOX.boxSectionOf(obj);
     BOX.applySave(obj);
     BOX.clearDirty();
     UI.refresh();
     syncSettingToggles();
-    toast("Box loaded.");
+    if (hosted && !hadBox)
+      toast("Collection Tracker file opened — it has no box yet. Use Import Collection to fill one, then Save.", 5200);
+    else if (hosted) toast("Box loaded from your Collection Tracker file.");
+    else toast("Box loaded.");
   }
 
   // ── Collection-tracker import ──────────────────────────────────────────
@@ -236,13 +238,16 @@
 
   function runImport() {
     const res = BOX.placeItems(pending.selectedItems);
+    // Adopt the file we imported from, so Save writes the box back into it
+    // alongside the collection rather than starting a second file.
+    BOX.adoptHost(pending.save);
     $("importModal").classList.add("hidden");
     UI.refresh();
     const placed = res.placed.player + res.placed.palico;
     const skipped = res.skipped.length;
-    toast(skipped
+    toast((skipped
       ? `Placed ${fmt(placed)} — ${fmt(skipped)} didn't fit and were skipped.`
-      : `Placed ${fmt(placed)} item(s).`, 4200);
+      : `Placed ${fmt(placed)} item(s).`) + " Save to write the box into that same file.", 5200);
     pending = null;
   }
 
@@ -305,6 +310,25 @@
   bindModal("aboutBtn", "aboutModal", "aboutClose");
   bindModal("settingsBtn", "settingsModal", "settingsClose");
   bindModal("helpBtn", "helpModal", "helpClose");
+
+  // Which file Save writes, and the way back out of a shared one.
+  function syncFileMode() {
+    const hosted = BOX.isHosted();
+    $("fileModeLabel").textContent = hosted
+      ? "Shared with your Collection Tracker file"
+      : "Standalone box file";
+    $("fileModeHint").textContent = hosted
+      ? "Save writes the whole file back — your collection is kept exactly as it was, with the box stored alongside it."
+      : "Save writes an equipment box file of its own.";
+    $("detachBtn").classList.toggle("hidden", !hosted);
+  }
+  $("settingsBtn").addEventListener("click", syncFileMode);
+  $("detachBtn").addEventListener("click", () => {
+    BOX.detachHost();
+    fileHandle = null;   // don't write a box file over the collection file
+    syncFileMode();
+    toast("Save will now write a standalone box file.");
+  });
 
   toggleSyncs.push(bindToggle("localSaveToggle", BOX.isLocalSaveEnabled, v => {
     BOX.setLocalSaveEnabled(v);
