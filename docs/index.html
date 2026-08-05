@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MHGU Equipment Box</title>
 <link rel="icon" type="image/png" href="assets/icons/icon_talisman_r1.png">
-<link rel="stylesheet" href="styles.css?v=2">
+<link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
 <div id="app">
@@ -20,6 +20,7 @@
     <button id="openBtn"   class="btn tiny">Open…</button>
     <input type="file" id="importFile" accept=".json,application/json" class="hidden">
     <input type="file" id="trackerFile" accept=".json,application/json" class="hidden">
+    <button id="helpBtn" class="icon-btn" title="Controls" aria-label="Controls">?</button>
     <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">&#9881;</button>
     <button id="aboutBtn" class="icon-btn" title="About / Attributions" aria-label="About">&#9432;</button>
   </header>
@@ -67,10 +68,6 @@
   <div class="box-layout">
     <div class="box-grid-area">
       <div id="grid" class="box-grid compact"></div>
-      <div class="grid-legend">
-        Click a slot to inspect · Double-click to edit · <kbd>Shift</kbd>+click swaps ·
-        <kbd>Ctrl</kbd>+click copies · <kbd>Q</kbd>/<kbd>E</kbd> pages · arrows or <kbd>WASD</kbd> move
-      </div>
     </div>
     <aside id="detailPanel" class="box-detail-panel"></aside>
   </div>
@@ -110,6 +107,47 @@
     <div class="row end gap">
       <button id="importGo" class="btn">Place items</button>
       <button id="importCancel" class="btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Controls -->
+<div id="helpModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Controls</h2>
+
+    <div class="set-title">The box</div>
+    <dl class="help-list">
+      <dt>Click</dt><dd>Inspect a slot</dd>
+      <dt>Double-click</dt><dd>Edit a slot — on an empty one, add equipment</dd>
+      <dt><kbd>Shift</kbd> + click</dt><dd>Swap the cursor slot with the one clicked</dd>
+      <dt><kbd>Ctrl</kbd> + click</dt><dd>Copy the cursor slot into the one clicked</dd>
+      <dt><kbd>Alt</kbd> + click</dt><dd>Set a range anchor</dd>
+    </dl>
+
+    <div class="set-title">Keyboard</div>
+    <dl class="help-list">
+      <dt><kbd>Q</kbd> / <kbd>E</kbd></dt><dd>Previous / next page</dd>
+      <dt>Arrows, <kbd>WASD</kbd></dt><dd>Move the cursor, following it across pages</dd>
+      <dt><kbd>Enter</kbd></dt><dd>Edit the cursor slot</dd>
+      <dt><kbd>Delete</kbd></dt><dd>Empty the cursor slot</dd>
+      <dt><kbd>Shift</kbd> + <kbd>S</kbd></dt><dd>Toggle Select Mode</dd>
+      <dt><kbd>Ctrl</kbd> + <kbd>S</kbd></dt><dd>Save to a file</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Close a dialog, or cancel a pending move or copy</dd>
+    </dl>
+
+    <div class="set-title">Select Mode</div>
+    <dl class="help-list">
+      <dt>Click</dt><dd>Add or remove a slot from the selection</dd>
+      <dt><kbd>Alt</kbd> + click twice</dt><dd>Select everything between the two slots</dd>
+      <dt><kbd>Shift</kbd> + click</dt><dd>Move the selection to that slot</dd>
+      <dt><kbd>Ctrl</kbd> + click</dt><dd>Copy the selection to that slot</dd>
+    </dl>
+    <p class="muted">Moving pushes whatever is already there back into the slots you moved
+      from, so nothing is lost. Copying overwrites, and asks first.</p>
+
+    <div class="row end gap">
+      <button id="helpClose" class="btn">Close</button>
     </div>
   </div>
 </div>
@@ -202,7 +240,7 @@
 <script src="db.js?v=2"></script>
 <script src="box.js?v=2"></script>
 <script src="edit.js?v=2"></script>
-<script src="ui.js?v=2"></script>
-<script src="app.js?v=1"></script>
+<script src="ui.js?v=4"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

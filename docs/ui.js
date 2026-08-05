@@ -153,8 +153,12 @@ window.UI = (function () {
     const e = BOX.get(kind, f);
 
     if (multiSelect) {
-      if (pendingOp) { runPendingOp(f); return; }
+      if (pendingOp) { applyOp(pendingOp, f); return; }
       cursor = f;
+      // Shift and Ctrl drop the selection straight onto a destination, without
+      // going via the Move / Copy buttons — the editor's shortcut for the same.
+      if (ev.shiftKey && selection.size) { anchor = null; applyOp("move", f); return; }
+      if ((ev.ctrlKey || ev.metaKey) && selection.size) { anchor = null; applyOp("copy", f); return; }
       if (ev.altKey && anchor !== null) {
         const lo = Math.min(anchor, f), hi = Math.max(anchor, f);
         for (let i = lo; i <= hi; i++) selection.add(i);
@@ -200,10 +204,9 @@ window.UI = (function () {
     renderDetail();
   }
 
-  function runPendingOp(dst) {
-    const list = [].concat.apply([], [Array.from(selection)]);
+  function applyOp(op, dst) {
+    const list = Array.from(selection);
     if (!list.length) { pendingOp = null; updateHints(); return; }
-    const op = pendingOp;
     const apply = () => {
       const n = op === "move"
         ? BOX.moveSelection(kind, list, dst)
@@ -605,7 +608,9 @@ window.UI = (function () {
       document.querySelectorAll(".modal:not(.hidden)").forEach(m => m.classList.add("hidden"));
     });
 
-    // The box grid is sized off viewport height; keep it square on resize.
+    // Grid sizing is entirely CSS (container query units on .box-grid-area) —
+    // measuring the chrome from JS and writing a custom property back fed the
+    // ResizeObserver its own output and hung the page.
     BOX.on("change", () => { updateCapacity(); });
 
     syncSort();
