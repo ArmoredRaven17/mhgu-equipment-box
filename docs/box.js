@@ -52,6 +52,7 @@ window.BOX = (function () {
       equip_type: type, equip_id: id, level: 0,
       transmog_id: 0, transmog_level: 0,
       decorations: [0, 0, 0], deco_slots: 0, talisman: null,
+      kinsect_id: null, kinsect_stats: null, bowgun_attachments: null,
     };
   }
   function cloneEntry(e) {
@@ -62,6 +63,9 @@ window.BOX = (function () {
       decorations: e.decorations.slice(0, 3),
       deco_slots: e.deco_slots,
       talisman: e.talisman ? Object.assign({}, e.talisman) : null,
+      kinsect_id: e.kinsect_id,
+      kinsect_stats: e.kinsect_stats ? e.kinsect_stats.slice() : null,
+      bowgun_attachments: e.bowgun_attachments ? Object.assign({}, e.bowgun_attachments) : null,
     };
   }
 
@@ -228,6 +232,19 @@ window.BOX = (function () {
     if (e.decorations.some(Boolean)) o.d = e.decorations.slice(0, 3);
     if (e.deco_slots) o.ds = e.deco_slots;
     if (e.talisman) o.tal = [e.talisman.skill1_id, e.talisman.skill1_pts, e.talisman.skill2_id, e.talisman.skill2_pts];
+    if (e.kinsect_id) {
+      o.k = e.kinsect_id;
+      // Trailing zeros in the 23-byte block carry no meaning; drop them.
+      if (e.kinsect_stats) {
+        const s = e.kinsect_stats.slice();
+        while (s.length && !s[s.length - 1]) s.pop();
+        if (s.length) o.ks = s;
+      }
+    }
+    if (e.bowgun_attachments) {
+      const b = e.bowgun_attachments;
+      if (b.mod_bit || b.variable_zoom) o.bg = [b.mod_bit | 0, b.variable_zoom ? 1 : 0];
+    }
     return o;
   }
   function unpackEntry(o) {
@@ -240,6 +257,15 @@ window.BOX = (function () {
     e.deco_slots = Number.isInteger(o.ds) ? o.ds : 0;
     if (Array.isArray(o.tal) && o.tal.length === 4)
       e.talisman = { skill1_id: o.tal[0] | 0, skill1_pts: o.tal[1] | 0, skill2_id: o.tal[2] | 0, skill2_pts: o.tal[3] | 0 };
+    if (Number.isInteger(o.k) && o.k > 0) {
+      e.kinsect_id = o.k;
+      const s = new Array(DB.KS_BYTES).fill(0);
+      if (Array.isArray(o.ks))
+        for (let i = 0; i < DB.KS_BYTES; i++) s[i] = Number.isInteger(o.ks[i]) ? o.ks[i] : 0;
+      e.kinsect_stats = s;
+    }
+    if (Array.isArray(o.bg) && o.bg.length === 2)
+      e.bowgun_attachments = { mod_bit: o.bg[0] | 0, variable_zoom: !!o.bg[1] };
     return e;
   }
   function serializeSave() {

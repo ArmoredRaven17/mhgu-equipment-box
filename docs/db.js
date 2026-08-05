@@ -8,6 +8,7 @@ window.DB = (function () {
   "use strict";
   const NAMES = window.EQ_NAMES, RARITY = window.EQ_RARITY, SLOTS = window.EQ_SLOTS;
   const LEVELS = window.EQ_LEVELS, SK = window.EQ_SKILLS, GENDER = window.EQ_GENDER;
+  const KIN = window.EQ_KINSECTS;
 
   // ── Equipment types ────────────────────────────────────────────────────
   // 0 empty · 1-5 armor · 6 talisman · 7-21 weapons (12 unused) · 22-24 Palico.
@@ -240,6 +241,126 @@ window.DB = (function () {
     return (GENDER.pair[type] || {})[id] || 0;
   }
 
+  // ── Kinsects (Insect Glaive) ───────────────────────────────────────────
+  // A glaive carries a kinsect whose stats the hunter feeds up over time. The
+  // save stores 23 bytes; only these indices mean anything to us, and each byte
+  // is a *level*, displayed one-based.
+  const KS = {
+    level: 0,
+    powerLv: 1, weightLv: 2, speedLv: 3,
+    fireLv: 4, waterLv: 5, thunderLv: 6, iceLv: 7, dragonLv: 8,
+  };
+  const KS_BYTES = 23;
+  const KS_PWS = [KS.powerLv, KS.weightLv, KS.speedLv];
+  const KS_ELEMENTS = [
+    { name: "Fire", idx: KS.fireLv, color: "#e05050" },
+    { name: "Water", idx: KS.waterLv, color: "#5090e0" },
+    { name: "Thunder", idx: KS.thunderLv, color: "#e0c030" },
+    { name: "Ice", idx: KS.iceLv, color: "#60c8e0" },
+    { name: "Dragon", idx: KS.dragonLv, color: "#a060d0" },
+  ];
+  // Power/weight/speed share a 36-point pool; the five elements share another.
+  // Each individual stat is additionally capped on its own: 19 for the three
+  // physical stats (which is exactly the radar's 240 scale — weightStat(19) is
+  // 240) and 36 for an element.
+  const KS_PWS_POOL = 36, KS_ELEM_POOL = 36, KS_MAX_LEVEL = 12;
+  const KS_PWS_MAX = 19, KS_ELEM_MAX = 36;
+
+  // Byte <-> displayed stat. Speed is piecewise: +5 for the first two levels,
+  // +10 after.
+  const powerStat = b => 50 + b * 6;
+  const weightStat = b => 50 + b * 10;
+  const speedStat = b => 60 + Math.min(b, 2) * 5 + Math.max(b - 2, 0) * 10;
+  const powerByte = s => Math.ceil((s - 50) / 6);
+  const weightByte = s => Math.ceil((s - 50) / 10);
+  const speedByte = s => (s <= 60 ? 0 : s <= 70 ? Math.ceil((s - 60) / 5) : Math.ceil((s - 70) / 10) + 2);
+
+  const kinsectCount = () => KIN.list.length;
+  const kinsect = id => (id > 0 ? KIN.list[id - 1] || null : null);
+  const kinsectTree = equipId => KIN.ig[String(equipId)] || null;
+  // Three DLC kinsects are bolted to one specific glaive and cannot be changed.
+  function lockedKinsectId(equipId) {
+    for (let i = 0; i < KIN.list.length; i++) {
+      const k = KIN.list[i];
+      if (k.dlc && (k.ids || []).indexOf(equipId) >= 0) return i + 1;
+    }
+    return 0;
+  }
+  // What this glaive may carry: its own tree, plus any DLC kinsect bound to it.
+  function kinsectOptions(equipId) {
+    const tree = kinsectTree(equipId);
+    const out = [];
+    for (let i = 0; i < KIN.list.length; i++) {
+      const k = KIN.list[i];
+      const ok = k.dlc ? (k.ids || []).indexOf(equipId) >= 0 : (tree === null || k.t === tree);
+      if (ok) out.push([i + 1, `${k.n} (${k.t})`]);
+    }
+    return out;
+  }
+  const ksMinBytes = k => (k ? [powerByte(k.p), weightByte(k.w), speedByte(k.s)] : [0, 0, 0]);
+  // A kinsect starts at its own base stats, which are its floor.
+  function defaultKinsectStats(id) {
+    const k = kinsect(id);
+    const s = new Array(KS_BYTES).fill(0);
+    if (!k) return s;
+    const min = ksMinBytes(k);
+    s[KS.powerLv] = min[0]; s[KS.weightLv] = min[1]; s[KS.speedLv] = min[2];
+    s[KS.level] = Math.max(0, ksLevel(s, id) - 1);
+    return s;
+  }
+  // Level is derived from the power/weight/speed total, floored at whatever
+  // level the kinsect unlocks at.
+  function ksLevel(stats, id) {
+    const total = KS_PWS.reduce((n, i) => n + (stats[i] || 0), 0);
+    const k = kinsect(id);
+    return Math.min(KS_MAX_LEVEL, Math.max((k && k.u) || 1, 1 + Math.floor(total / 3)));
+  }
+  // Write one stat byte back, holding both pool caps and the kinsect's floors.
+  function ksSet(stats, id, idx, value) {
+    const next = stats.slice();
+    next[idx] = Math.max(0, Math.min(255, value));
+    if (KS_PWS.indexOf(idx) >= 0) {
+      const others = KS_PWS.filter(i => i !== idx).reduce((n, i) => n + next[i], 0);
+      next[idx] = Math.min(next[idx], KS_PWS_MAX, Math.max(0, KS_PWS_POOL - others));
+      const min = ksMinBytes(kinsect(id));
+      next[idx] = Math.max(next[idx], min[KS_PWS.indexOf(idx)]);
+    }
+    const elemIdx = KS_ELEMENTS.map(e => e.idx);
+    if (elemIdx.indexOf(idx) >= 0) {
+      const others = elemIdx.filter(i => i !== idx).reduce((n, i) => n + next[i], 0);
+      next[idx] = Math.min(next[idx], KS_ELEM_MAX, Math.max(0, KS_ELEM_POOL - others));
+    }
+    next[KS.level] = Math.max(0, ksLevel(next, id) - 1);
+    return next;
+  }
+  // The one or two elements actually worth showing, strongest first.
+  function ksElements(stats) {
+    const withLv = KS_ELEMENTS.map(e => ({ name: e.name, color: e.color, lv: stats[e.idx] || 0 }));
+    const nonZero = withLv.filter(e => e.lv > 0).sort((a, b) => b.lv - a.lv);
+    return nonZero.slice(0, 2);
+  }
+
+  // ── Bowgun attachments ─────────────────────────────────────────────────
+  // A single mod slot, stored as a bit, plus the scope. Silencer is Light-only
+  // and Shield is Heavy-only, exactly as the game restricts them.
+  const isBowgun = t => t === 11 || t === 13;
+  const isLBG = t => t === 13;
+  const isIG = t => t === 20;
+  function bowgunModLabel(bit, lbg) {
+    if (bit === 0x02) return "Silencer";
+    if (bit === 0x04) return lbg ? "Long Barrel" : "Power Barrel";
+    if (bit === 0x10) return "Shield";
+    return "None";
+  }
+  function bowgunModOptions(type) {
+    const lbg = isLBG(type);
+    const out = [[0x00, "None"]];
+    if (lbg) out.push([0x02, "Silencer"]);
+    out.push([0x04, lbg ? "Long Barrel" : "Power Barrel"]);
+    if (!lbg) out.push([0x10, "Shield"]);
+    return out;
+  }
+
   // ── Pickers ────────────────────────────────────────────────────────────
   // {id: label} for the typeahead. Weapons use their whole rename chain so that
   // searching for a final-form name finds the tree that becomes it.
@@ -262,5 +383,11 @@ window.DB = (function () {
     skillName, skillList,
     charmRange, clampPts, charmSkills, talismanList,
     genderOf, genderPair, pickerDb,
+    KS, KS_BYTES, KS_PWS, KS_ELEMENTS, KS_PWS_POOL, KS_ELEM_POOL, KS_MAX_LEVEL,
+    KS_PWS_MAX, KS_ELEM_MAX,
+    powerStat, weightStat, speedStat, powerByte, weightByte, speedByte,
+    kinsectCount, kinsect, kinsectTree, lockedKinsectId, kinsectOptions,
+    ksMinBytes, defaultKinsectStats, ksLevel, ksSet, ksElements,
+    isBowgun, isLBG, isIG, bowgunModLabel, bowgunModOptions,
   };
 })();

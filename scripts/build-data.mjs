@@ -51,6 +51,9 @@ const DECORATIONS = read("mhgu_decorations.json");
 const GENDER_MAP = read("gender_armor_map.json");
 const NON_CRAFTABLE = read("non_craftable_armor.json");
 const MHGU_ARMORS = read("mhgu_armors.json");
+const KINSECTS = read("kinsects.json");
+const KINSECT_SKILLS = read("kinsect_skills.json");
+const IG_KINSECT_TYPE = read("ig_kinsect_type.json");
 
 // Armor upgrade levels come from the game's own tables by way of the collection
 // tracker's generator — more accurate than deriving them from rarity.
@@ -226,6 +229,26 @@ for (const [type, key] of Object.entries(ARMOR_SLOT_KEY)) {
   }
 }
 
+// ── Kinsects ───────────────────────────────────────────────────────────────
+// A kinsect_id is this list's position + 1, matching the editor. `ig` maps an
+// Insect Glaive's equip_id to the kinsect tree ("Cutting" / "Blunt") it can take;
+// three DLC kinsects are instead locked to a single weapon by `ids`.
+const skillsByName = new Map(KINSECT_SKILLS.map(k => [k.base_name, k]));
+const kinsects = KINSECTS.map(k => {
+  const extra = skillsByName.get(k.base_name);
+  const o = {
+    n: k.base_name, t: k.type, u: k.unlock_kinsect_level || 0,
+    p: k.power, w: k.weight, s: k.speed,
+  };
+  if (k.dlc) { o.dlc = 1; o.ids = k.weapon_ids || []; }
+  if (extra) {
+    if (extra.kinsect_skills && extra.kinsect_skills.length) o.ks = extra.kinsect_skills;
+    if (extra.extract_skills && extra.extract_skills.length) o.es = extra.extract_skills;
+    if (extra.innate_element) o.el = extra.innate_element;
+  }
+  return o;
+});
+
 // ── Emit ───────────────────────────────────────────────────────────────────
 mkdirSync(OUT, { recursive: true });
 const emit = (file, global, value) => {
@@ -241,6 +264,7 @@ const written = [
   ["levels.js", "EQ_LEVELS", levels],
   ["skills.js", "EQ_SKILLS", skillsOut],
   ["gender.js", "EQ_GENDER", { g: gender, pair }],
+  ["kinsects.js", "EQ_KINSECTS", { list: kinsects, ig: IG_KINSECT_TYPE }],
 ].map(([file, global, value]) => [file, emit(file, global, value)]);
 
 // ── Report ─────────────────────────────────────────────────────────────────
@@ -257,6 +281,8 @@ console.log(`  talismans    ${Object.keys(names.t).length}`);
 console.log(`  decorations  ${Object.keys(deco).length}`);
 console.log(`  skills       ${Object.keys(skillsOut.sk).length}`);
 console.log(`  gendered     ${count(gender)} (${count(pair)} paired)`);
+console.log(`  kinsects     ${kinsects.length} (${kinsects.filter(k => k.dlc).length} DLC-locked), ` +
+  `${Object.keys(IG_KINSECT_TYPE).length} glaives mapped`);
 
 // Cross-checks. These are the assumptions the app is built on; if the upstream
 // data shifts under us they should fail loudly here rather than silently render
@@ -270,6 +296,9 @@ const checks = [
   ["palico weapon 1", names.p[22][1], "F Bone Wedge"],
   ["talisman 1", names.t[1], "Pawn Talisman"],
   ["no equip_type 12", names.w[12], undefined],
+  ["kinsect 1", kinsects[0].n, "Culldrone"],
+  ["kinsect 2 unlock", kinsects[1].u, 3],
+  ["glaive 1 tree", IG_KINSECT_TYPE["1"], "Cutting"],
 ];
 let failed = 0;
 for (const [label, got, want] of checks) {

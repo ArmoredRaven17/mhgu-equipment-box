@@ -138,6 +138,8 @@ window.EDIT = (function () {
         draft.decorations = [0, 0, 0];
         draft.deco_slots = 0;
         draft.talisman = v === 6 ? { skill1_id: 0, skill1_pts: 0, skill2_id: 0, skill2_pts: 0 } : null;
+        draft.kinsect_id = null; draft.kinsect_stats = null;
+        draft.bowgun_attachments = null;
         dirtyDraft = true;
         render();
       })));
@@ -168,6 +170,7 @@ window.EDIT = (function () {
         draft.level = 0;
         // A different piece can offer fewer slots — drop what no longer fits.
         trimDecos();
+        syncKinsect();
         dirtyDraft = true;
         render();
       },
@@ -187,6 +190,201 @@ window.EDIT = (function () {
     }
 
     if (DB.isArmor(t) && draft.equip_id) renderTransmog(body);
+    if (DB.isIG(t) && draft.equip_id) renderKinsect(body);
+    if (DB.isBowgun(t) && draft.equip_id) renderBowgun(body);
+  }
+
+  // Keep the kinsect legal for the glaive now selected: DLC glaives force their
+  // own kinsect, and a kinsect from the wrong tree (Cutting vs Blunt) has to go.
+  function syncKinsect() {
+    if (!DB.isIG(draft.equip_type) || !draft.equip_id) {
+      draft.kinsect_id = null; draft.kinsect_stats = null;
+      return;
+    }
+    const locked = DB.lockedKinsectId(draft.equip_id);
+    if (locked) {
+      if (draft.kinsect_id !== locked) {
+        draft.kinsect_id = locked;
+        draft.kinsect_stats = DB.defaultKinsectStats(locked);
+      }
+      return;
+    }
+    const allowed = DB.kinsectOptions(draft.equip_id);
+    const ok = draft.kinsect_id && allowed.some(o => o[0] === draft.kinsect_id);
+    if (!ok) {
+      const first = allowed.length ? allowed[0][0] : 0;
+      draft.kinsect_id = first || null;
+      draft.kinsect_stats = first ? DB.defaultKinsectStats(first) : null;
+    } else if (!draft.kinsect_stats) {
+      draft.kinsect_stats = DB.defaultKinsectStats(draft.kinsect_id);
+    }
+  }
+
+  function renderKinsect(body) {
+    syncKinsect();
+    const fs = document.createElement("fieldset");
+    fs.className = "edit-group";
+    fs.innerHTML = "<legend>Kinsect</legend>";
+
+    const locked = DB.lockedKinsectId(draft.equip_id);
+    const kd = DB.kinsect(draft.kinsect_id);
+    if (locked) {
+      const note = document.createElement("div");
+      note.className = "ks-locked";
+      note.textContent = `${kd ? kd.n : "?"} (${kd ? kd.t : "?"}) — fixed to this glaive`;
+      fs.appendChild(note);
+    } else {
+      fs.appendChild(field("Kinsect", selectEl(
+        DB.kinsectOptions(draft.equip_id), draft.kinsect_id || 0,
+        v => {
+          draft.kinsect_id = v;
+          draft.kinsect_stats = DB.defaultKinsectStats(v);   // stats reset to the new insect's floor
+          dirtyDraft = true;
+          render();
+        })));
+    }
+
+    const stats = draft.kinsect_stats || DB.defaultKinsectStats(draft.kinsect_id);
+    const KS = DB.KS;
+    const min = DB.ksMinBytes(kd);
+    const pwsUsed = DB.KS_PWS.reduce((n, i) => n + stats[i], 0);
+    const elemUsed = DB.KS_ELEMENTS.reduce((n, e) => n + stats[e.idx], 0);
+
+    const head = document.createElement("div");
+    head.className = "ks-level-row";
+    head.innerHTML = `<span>Kinsect level</span><strong>${DB.ksLevel(stats, draft.kinsect_id)}</strong>`;
+    fs.appendChild(head);
+    fs.appendChild(radarEl(stats));
+
+    const grid = document.createElement("div");
+    grid.className = "ks-stat-grid";
+    // Power / weight / speed share one pool; the elements share another.
+    [["Power", KS.powerLv, DB.powerStat, min[0]],
+     ["Weight", KS.weightLv, DB.weightStat, min[1]],
+     ["Speed", KS.speedLv, DB.speedStat, min[2]]]
+      .forEach(([label, idx, toStat, floor]) => {
+        grid.appendChild(ksRow(label, idx, stats, floor,
+          Math.min(DB.KS_PWS_MAX, stats[idx] + Math.max(0, DB.KS_PWS_POOL - pwsUsed)),
+          toStat(stats[idx])));
+      });
+    DB.KS_ELEMENTS.forEach(e => {
+      grid.appendChild(ksRow(e.name, e.idx, stats, 0,
+        Math.min(DB.KS_ELEM_MAX, stats[e.idx] + Math.max(0, DB.KS_ELEM_POOL - elemUsed)), null, e.color));
+    });
+    fs.appendChild(grid);
+
+    const pools = document.createElement("div");
+    pools.className = "slots-used";
+    pools.textContent = `Power/Weight/Speed: ${pwsUsed} / ${DB.KS_PWS_POOL} · Elements: ${elemUsed} / ${DB.KS_ELEM_POOL}`;
+    fs.appendChild(pools);
+
+    if (kd && (kd.ks || kd.es)) {
+      const sk = document.createElement("div");
+      sk.className = "edit-hint";
+      const parts = [];
+      if (kd.ks) parts.push("Kinsect skills: " + kd.ks.join(", "));
+      if (kd.es) parts.push("Extract skills: " + kd.es.join(", "));
+      sk.textContent = parts.join(" · ");
+      fs.appendChild(sk);
+    }
+    body.appendChild(fs);
+  }
+
+  // One stat row: a level spinner, one-based like the game shows it, plus the
+  // derived stat value where there is one.
+  function ksRow(label, idx, stats, floor, ceiling, statValue, color) {
+    const row = document.createElement("div");
+    row.className = "ks-stat-row";
+    const name = document.createElement("span");
+    name.className = "ks-stat-name";
+    name.textContent = label;
+    if (color) name.style.color = color;
+    const inp = document.createElement("input");
+    inp.type = "number";
+    inp.min = String(floor + 1);
+    inp.max = String(ceiling + 1);
+    inp.value = String(stats[idx] + 1);
+    inp.addEventListener("change", () => {
+      const want = (parseInt(inp.value, 10) || 1) - 1;
+      draft.kinsect_stats = DB.ksSet(stats, draft.kinsect_id, idx, Math.max(floor, want));
+      dirtyDraft = true;
+      render();
+    });
+    const val = document.createElement("span");
+    val.className = "ks-stat-val";
+    val.textContent = statValue === null || statValue === undefined ? "" : String(statValue);
+    row.appendChild(name); row.appendChild(inp); row.appendChild(val);
+    return row;
+  }
+
+  function radarEl(stats) {
+    const wrap = document.createElement("div");
+    wrap.innerHTML = radarSvg(stats);
+    return wrap.firstElementChild;
+  }
+
+  // The editor's three-axis radar, redrawn as inline SVG. Power, weight and
+  // speed each get an axis; the shape is tinted by whichever dominates.
+  function radarSvg(stats) {
+    const cx = 80, cy = 84, r = 52, MAX = 240;
+    const power = DB.powerStat(stats[DB.KS.powerLv]);
+    const weight = DB.weightStat(stats[DB.KS.weightLv]);
+    const speed = DB.speedStat(stats[DB.KS.speedLv]);
+    const color = power >= weight && power >= speed
+      ? { fill: "rgba(220,100,160,0.35)", stroke: "rgba(240,120,180,0.85)", dot: "#e878c0" }
+      : weight >= speed
+        ? { fill: "rgba(210,120,40,0.35)", stroke: "rgba(240,150,50,0.85)", dot: "#e09030" }
+        : { fill: "rgba(200,200,200,0.35)", stroke: "rgba(230,230,230,0.85)", dot: "#d0d0d0" };
+    const axes = [
+      { label: "P", value: power, angle: -Math.PI / 2 },
+      { label: "W", value: weight, angle: -Math.PI / 2 + 2 * Math.PI / 3 },
+      { label: "S", value: speed, angle: -Math.PI / 2 + 4 * Math.PI / 3 },
+    ];
+    const pt = (frac, a) => [cx + frac * r * Math.cos(a), cy + frac * r * Math.sin(a)];
+    const poly = frac => axes.map(a => pt(frac, a.angle).join(",")).join(" ");
+    let svg = `<svg viewBox="0 10 160 120" class="kinsect-radar" aria-hidden="true">`;
+    [0.25, 0.5, 0.75, 1].forEach(f => {
+      svg += `<polygon points="${poly(f)}" fill="none" stroke="${f === 1 ? "#333" : "#222"}" stroke-width="${f === 1 ? 1 : 0.5}"/>`;
+    });
+    axes.forEach(a => {
+      const p = pt(1, a.angle);
+      svg += `<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="#2a2a3a" stroke-width="1"/>`;
+    });
+    svg += `<polygon points="${axes.map(a => pt(a.value / MAX, a.angle).join(",")).join(" ")}"
+      fill="${color.fill}" stroke="${color.stroke}" stroke-width="1.5"/>`;
+    axes.forEach(a => {
+      const p = pt(a.value / MAX, a.angle);
+      svg += `<circle cx="${p[0]}" cy="${p[1]}" r="2.5" fill="${color.dot}"/>`;
+    });
+    axes.forEach(a => {
+      const lx = cx + (r + 10) * Math.cos(a.angle), ly = cy + (r + 10) * Math.sin(a.angle);
+      const anchor = Math.cos(a.angle) > 0.3 ? "start" : Math.cos(a.angle) < -0.3 ? "end" : "middle";
+      const dy = Math.sin(a.angle) > 0.3 ? "0.9em" : Math.sin(a.angle) < -0.3 ? "-0.2em" : "0.35em";
+      svg += `<text x="${lx}" y="${ly}" text-anchor="${anchor}" dy="${dy}" font-size="10" fill="#999">${a.label}</text>`;
+    });
+    return svg + "</svg>";
+  }
+
+  function renderBowgun(body) {
+    if (!draft.bowgun_attachments) draft.bowgun_attachments = { mod_bit: 0, variable_zoom: false };
+    const bg = draft.bowgun_attachments;
+    const fs = document.createElement("fieldset");
+    fs.className = "edit-group";
+    fs.innerHTML = "<legend>Bowgun Attachments</legend>";
+    fs.appendChild(field("Mod", selectEl(
+      DB.bowgunModOptions(draft.equip_type), bg.mod_bit,
+      v => { bg.mod_bit = v; dirtyDraft = true; updateSaveState(); })));
+    fs.appendChild(field("Scope", selectEl(
+      [[0, "Fixed Zoom"], [1, "Variable Zoom"]], bg.variable_zoom ? 1 : 0,
+      v => { bg.variable_zoom = v === 1; dirtyDraft = true; updateSaveState(); })));
+    const note = document.createElement("div");
+    note.className = "edit-hint";
+    note.style.margin = "6px 0 0";
+    note.textContent = DB.isLBG(draft.equip_type)
+      ? "Silencer and Long Barrel are Light Bowgun mods."
+      : "Power Barrel and Shield are Heavy Bowgun mods.";
+    fs.appendChild(note);
+    body.appendChild(fs);
   }
 
   // Lowering a level can leave fewer decoration slots than are socketed. The
@@ -455,6 +653,10 @@ window.EDIT = (function () {
       // Keep the stored slot count in step for non-talismans, so a saved box
       // still reads correctly if the tables ever move under it.
       if (out && out.equip_type !== 6) out.deco_slots = DB.entryDecoSlots(out);
+      // Never let a kinsect or a bowgun mod survive onto a piece that cannot
+      // carry one — a type change followed by Save would otherwise smuggle it in.
+      if (out && !DB.isIG(out.equip_type)) { out.kinsect_id = null; out.kinsect_stats = null; }
+      if (out && !DB.isBowgun(out.equip_type)) out.bowgun_attachments = null;
       const commit = onCommit, at = ctx.index;
       close();
       commit(at, out);
@@ -474,5 +676,5 @@ window.EDIT = (function () {
     confirmOverlay("You have unsaved changes to this slot. Discard them?", null, close);
   }
 
-  return { init, open, close, isOpen, tryClose, nameSearch, esc };
+  return { init, open, close, isOpen, tryClose, nameSearch, esc, radarSvg };
 })();
