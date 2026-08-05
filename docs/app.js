@@ -153,102 +153,9 @@
     UI.refresh();
     syncSettingToggles();
     if (hosted && !hadBox)
-      toast("Collection Tracker file opened — it has no box yet. Use Import Collection to fill one, then Save.", 5200);
+      toast("Collection Tracker file opened — it has no box in it yet. Lay one out and Save to put it in there.", 5200);
     else if (hosted) toast("Box loaded from your Collection Tracker file.");
     else toast("Box loaded.");
-  }
-
-  // ── Collection-tracker import ──────────────────────────────────────────
-  let pending = null;   // {items, byType:Map, unspecified}
-
-  function openImportDialog(obj) {
-    const err = BOX.validateTrackerSave(obj);
-    if (err) { toast(err); return; }
-    pending = { save: obj, unspecified: "min", excluded: new Set() };
-    renderImport();
-    $("importModal").classList.remove("hidden");
-  }
-
-  function renderImport() {
-    const items = BOX.trackerItems(pending.save, pending.unspecified);
-    pending.items = items;
-
-    // Group by equip_type so the user can trim a too-large collection down to
-    // what will actually fit.
-    const byType = new Map();
-    for (const it of items) byType.set(it.type, (byType.get(it.type) || 0) + 1);
-    pending.byType = byType;
-
-    const selectedItems = items.filter(it => !pending.excluded.has(it.type));
-    const want = { player: 0, palico: 0 };
-    for (const it of selectedItems) want[it.box]++;
-    const free = { player: BOX.emptyCount("player"), palico: BOX.emptyCount("palico") };
-    pending.selectedItems = selectedItems;
-
-    let h = `<p class="edit-hint" style="margin-top:0">Everything marked owned in the tracker is
-      placed into empty slots, in the game's own box order. Nothing already in the box is moved
-      or overwritten. Decorations, transmog and talismans are not part of a tracker save, so
-      pieces arrive bare.</p>`;
-
-    h += `<div class="imp-summary">
-      <span>Selected for the hunter box</span><span class="n">${fmt(want.player)}</span>
-      <span>Free hunter slots</span><span class="n">${fmt(free.player)}</span>
-      <span>Selected for the Palico box</span><span class="n">${fmt(want.palico)}</span>
-      <span>Free Palico slots</span><span class="n">${fmt(free.palico)}</span>
-    </div>`;
-
-    const shortP = want.player - free.player, shortC = want.palico - free.palico;
-    if (shortP > 0 || shortC > 0) {
-      const parts = [];
-      if (shortP > 0) parts.push(`<strong>${fmt(shortP)}</strong> too many for the hunter box`);
-      if (shortC > 0) parts.push(`<strong>${fmt(shortC)}</strong> too many for the Palico box`);
-      h += `<div class="imp-warn">${parts.join(" and ")}. A complete collection is far larger
-        than the game's box, so this will not all fit. Untick categories below, or import now and
-        the overflow is simply skipped — you can come back and run this again after freeing slots.</div>`;
-    }
-
-    h += `<div class="edit-field"><label>Pieces owned without a recorded level</label>
-      <select id="impUnspec">
-        <option value="min"${pending.unspecified === "min" ? " selected" : ""}>Place at LV 1</option>
-        <option value="max"${pending.unspecified === "max" ? " selected" : ""}>Place fully upgraded</option>
-      </select></div>`;
-
-    h += `<div class="detail-section-title">Categories</div><div class="imp-cats">`;
-    const types = Array.from(byType.keys()).sort((a, b) => DB.typeSortPos(a) - DB.typeSortPos(b));
-    for (const t of types) {
-      const on = !pending.excluded.has(t);
-      h += `<label class="imp-cat"><input type="checkbox" data-type="${t}"${on ? " checked" : ""}>
-        <span>${EDIT.esc(DB.typeName(t))}</span><span class="n">${fmt(byType.get(t))}</span></label>`;
-    }
-    h += `</div>`;
-
-    $("importBody").innerHTML = h;
-    $("impUnspec").addEventListener("change", function () {
-      pending.unspecified = this.value;
-      renderImport();
-    });
-    $("importBody").querySelectorAll("input[data-type]").forEach(cb =>
-      cb.addEventListener("change", function () {
-        const t = Number(this.dataset.type);
-        if (this.checked) pending.excluded.delete(t); else pending.excluded.add(t);
-        renderImport();
-      }));
-    $("importGo").disabled = !selectedItems.length;
-  }
-
-  function runImport() {
-    const res = BOX.placeItems(pending.selectedItems);
-    // Adopt the file we imported from, so Save writes the box back into it
-    // alongside the collection rather than starting a second file.
-    BOX.adoptHost(pending.save);
-    $("importModal").classList.add("hidden");
-    UI.refresh();
-    const placed = res.placed.player + res.placed.palico;
-    const skipped = res.skipped.length;
-    toast((skipped
-      ? `Placed ${fmt(placed)} — ${fmt(skipped)} didn't fit and were skipped.`
-      : `Placed ${fmt(placed)} item(s).`) + " Save to write the box into that same file.", 5200);
-    pending = null;
   }
 
   // ── Settings toggles ───────────────────────────────────────────────────
@@ -291,21 +198,6 @@
     r.readAsText(f);
     this.value = "";
   });
-  $("importTrackerBtn").addEventListener("click", () => $("trackerFile").click());
-  $("trackerFile").addEventListener("change", function () {
-    const f = this.files[0];
-    if (!f) return;
-    const r = new FileReader();
-    r.onload = e => {
-      let obj;
-      try { obj = JSON.parse(e.target.result); } catch (err) { toast("That file isn't valid JSON."); return; }
-      openImportDialog(obj);
-    };
-    r.readAsText(f);
-    this.value = "";
-  });
-  $("importGo").addEventListener("click", runImport);
-  $("importCancel").addEventListener("click", () => { $("importModal").classList.add("hidden"); pending = null; });
 
   bindModal("aboutBtn", "aboutModal", "aboutClose");
   bindModal("settingsBtn", "settingsModal", "settingsClose");
@@ -337,8 +229,9 @@
     toast("Save will now write one file holding both the collection and the box.", 4200);
   });
 
-  // The mirror of Import Collection: everything sitting in the box is something
-  // you have, so it can mark the collection. Only ever adds.
+  // Everything sitting in the box is something you have, so it can mark the
+  // collection outright. Only ever adds. The same merge runs on every autosave
+  // while the sync setting is on; this is the manual, one-shot version.
   $("markOwnedBtn").addEventListener("click", () => {
     if (!BOX.usedCount("player") && !BOX.usedCount("palico")) {
       toast("The box is empty — nothing to mark.");

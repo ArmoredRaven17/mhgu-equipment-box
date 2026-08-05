@@ -104,8 +104,9 @@ kbd{
 .box-nav-actions > *{flex-shrink:0}
 .box-nav-actions .move-hint{flex-wrap:nowrap;white-space:nowrap;margin-right:auto}
 
-/* Fixed line-height: the MHFU font has no "…" glyph, and letting a fallback
-   font set the line box made "Import Collection…" taller than its neighbours. */
+/* Fixed line-height: the MHFU font lacks some glyphs, and letting a fallback
+   font set the line box made buttons containing one taller than their
+   neighbours — an ellipsis was enough to push a button 3px out of line. */
 .nav-btn{
   font-size:11px;line-height:16px;padding:3px 10px;background:#ffffff14;
   border:1px solid var(--line);border-radius:4px;color:var(--text);cursor:pointer
@@ -433,27 +434,6 @@ fieldset.edit-group.transmog legend{color:#44aaff;opacity:1}
 .swatch.sel{outline:2px solid #fff;outline-offset:-2px}
 .swatch-icon{width:22px;height:22px;object-fit:contain}
 
-/* Collection import */
-.imp-summary{
-  display:grid;grid-template-columns:1fr auto;gap:2px 12px;font-size:13px;margin-bottom:12px;
-  font-variant-numeric:tabular-nums
-}
-.imp-summary .n{text-align:right;font-weight:600}
-.imp-summary .short{color:var(--negative)}
-.imp-cats{
-  max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;
-  padding:8px 10px;background:#00000024
-}
-.imp-cat{
-  display:flex;align-items:center;gap:8px;padding:2px 0;font-size:12.5px;cursor:pointer;
-  font-variant-numeric:tabular-nums
-}
-.imp-cat input{accent-color:var(--accent-hover);width:14px;height:14px;cursor:pointer}
-.imp-cat .n{margin-left:auto;opacity:.7}
-.imp-warn{
-  color:#ffce6a;font-size:12px;line-height:1.5;margin:10px 0;
-  border-left:2px solid #ffce6a;padding-left:10px
-}
 
 /* ── Banners ─────────────────────────────────────────────────────────── */
 .restore-banner,.toast{

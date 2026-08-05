@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MHGU Equipment Box</title>
 <link rel="icon" type="image/png" href="assets/icons/icon_talisman_r1.png">
-<link rel="stylesheet" href="styles.css?v=7">
+<link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
 <div id="app">
@@ -19,7 +19,6 @@
     <button id="saveAsBtn" class="btn tiny">Save As…</button>
     <button id="openBtn"   class="btn tiny">Open…</button>
     <input type="file" id="importFile" accept=".json,application/json" class="hidden">
-    <input type="file" id="trackerFile" accept=".json,application/json" class="hidden">
     <button id="helpBtn" class="icon-btn" title="Controls" aria-label="Controls">?</button>
     <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">&#9881;</button>
     <button id="aboutBtn" class="icon-btn" title="About / Attributions" aria-label="About">&#9432;</button>
@@ -59,7 +58,6 @@
       <span id="selectHint" class="move-hint hidden"></span>
       <button id="pasteBtn" class="nav-btn" disabled>Paste Selection</button>
       <button id="clearClipBtn" class="nav-btn" disabled>Clear Saved Selection</button>
-      <button id="importTrackerBtn" class="nav-btn" title="Fill the box from a Collection Tracker save">Import Collection…</button>
       <button id="markOwnedBtn" class="nav-btn" title="Mark everything in this box as owned in the collection">Mark Box as Owned</button>
       <button id="clearBoxBtn" class="nav-btn">Empty Box</button>
     </div>
@@ -96,18 +94,6 @@
     <div class="row end gap">
       <button id="confirmOk" class="btn">OK</button>
       <button id="confirmCancel" class="btn">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- Collection import -->
-<div id="importModal" class="modal hidden">
-  <div class="modal-card wide">
-    <h2>Import from Collection Tracker</h2>
-    <div id="importBody"></div>
-    <div class="row end gap">
-      <button id="importGo" class="btn">Place items</button>
-      <button id="importCancel" class="btn">Cancel</button>
     </div>
   </div>
 </div>
@@ -257,9 +243,9 @@
 <script src="data/gender.js?v=1"></script>
 <script src="data/kinsects.js?v=1"></script>
 <script src="db.js?v=2"></script>
-<script src="box.js?v=7"></script>
+<script src="box.js?v=8"></script>
 <script src="edit.js?v=2"></script>
 <script src="ui.js?v=5"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>
