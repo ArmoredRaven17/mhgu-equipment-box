@@ -20,7 +20,11 @@ window.BOX = (function () {
   // key inside it and everything else in the envelope is carried through
   // untouched, so one file can hold both apps' data.
   const BOX_KEY = "box";
-  const AUTOSAVE_KEY = "mhgu-box-autosave";
+  // The collection tracker is a sibling path on the same origin, so both apps
+  // share one localStorage. They keep one document between them under the
+  // tracker's historical key — the name is legacy, the contents are shared.
+  const AUTOSAVE_KEY = "mhgu-tracker-autosave";
+  const LEGACY_BOX_KEY = "mhgu-box-autosave";   // read once, to migrate; never deleted
   const LOCAL_ENABLED_KEY = "mhgu-box-local";
   const SETTINGS_KEY = "mhgu-box-settings";
 
@@ -330,10 +334,16 @@ window.BOX = (function () {
     if (section.player == null && section.palico == null) return "Save file contains no box data.";
     return null;
   }
-  function applySave(obj) {
+  // `adopt` is false when restoring from browser storage: that document is
+  // shared with the tracker and is always tracker-shaped, but which *file*
+  // format Save writes should follow the file you opened, not what happens to
+  // be in localStorage.
+  function applySave(obj, opts) {
     const section = boxSectionOf(obj) || {};
     // Remember the rest of a tracker envelope so saving writes it back whole.
-    if (isTrackerFile(obj)) {
+    if (opts && opts.adopt === false) {
+      // leave host as it is
+    } else if (isTrackerFile(obj)) {
       host = Object.assign({}, obj);
       delete host[BOX_KEY];
     } else {
@@ -389,31 +399,61 @@ window.BOX = (function () {
     clearTimeout(autosaveTimer);
     autosaveTimer = setTimeout(flushAutosave, 500);
   }
+  const readStored = key => {
+    let raw;
+    try { raw = localStorage.getItem(key); } catch (e) { return null; }
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch (e) { return null; }
+  };
+  // Read-modify-write: pull the current shared document, replace only the box
+  // section, put it back. The collection half is never written from a cached
+  // copy, so the tracker in another tab cannot be reverted by this one.
   function flushAutosave() {
     if (!localSaveEnabled) return;
-    try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(serializeSave())); } catch (e) {}
+    let doc = readStored(AUTOSAVE_KEY);
+    if (!doc || typeof doc !== "object")
+      doc = { app: TRACKER_APP, version: 2, owned: { w: {}, a: {}, p: {} }, levels: { w: {}, a: {}, p: {} } };
+    doc[BOX_KEY] = Object.assign({ version: SAVE_VERSION }, boxPayload());
+    doc.savedAt = new Date().toISOString();
+    try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(doc)); } catch (e) {}
   }
   function readLocalSave() {
-    let raw;
-    try { raw = localStorage.getItem(AUTOSAVE_KEY); } catch (e) { return null; }
-    if (!raw) return null;
-    let obj;
-    try { obj = JSON.parse(raw); } catch (e) { return null; }
-    if (validateSave(obj)) return null;
-    const any = ["player", "palico"].some(k => obj[k] && obj[k].entries && Object.keys(obj[k].entries).length);
-    return any ? obj : null;
+    const doc = readStored(AUTOSAVE_KEY);
+    const hasBox = doc && doc[BOX_KEY] && !validateSave(doc);
+    if (hasBox) {
+      const s = doc[BOX_KEY];
+      const any = ["player", "palico"].some(k => s[k] && s[k].entries && Object.keys(s[k].entries).length);
+      if (any) return doc;
+    }
+    // Nothing in the shared document yet — fall back to a box saved by an
+    // earlier build under its own key. It migrates on the next write, and the
+    // old key is left alone as a backup.
+    const legacy = readStored(LEGACY_BOX_KEY);
+    if (!legacy || validateSave(legacy)) return null;
+    const any = ["player", "palico"].some(k => legacy[k] && legacy[k].entries && Object.keys(legacy[k].entries).length);
+    return any ? legacy : null;
   }
   function setLocalSaveEnabled(v) {
     localSaveEnabled = v;
     try {
       localStorage.setItem(LOCAL_ENABLED_KEY, v ? "1" : "0");
-      if (v) scheduleAutosave(); else localStorage.removeItem(AUTOSAVE_KEY);
+      if (v) scheduleAutosave(); else clearLocalSave();
     } catch (e) {}
   }
   const isLocalSaveEnabled = () => localSaveEnabled;
+  // Drop only the box out of the shared document — the collection in it belongs
+  // to the tracker, and clearing the box here must not take it too. The key is
+  // deleted outright only when there is no collection left to keep.
   function clearLocalSave() {
     clearTimeout(autosaveTimer);
-    try { localStorage.removeItem(AUTOSAVE_KEY); } catch (e) {}
+    const doc = readStored(AUTOSAVE_KEY);
+    try {
+      if (!doc || typeof doc !== "object") { localStorage.removeItem(AUTOSAVE_KEY); return; }
+      delete doc[BOX_KEY];
+      const keeps = Object.keys(doc).some(k => k === "owned" || k === "levels" || k === "settings");
+      if (keeps) localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(doc));
+      else localStorage.removeItem(AUTOSAVE_KEY);
+    } catch (e) {}
   }
 
   // ── Collection-tracker import ──────────────────────────────────────────

@@ -373,7 +373,7 @@
     const obj = BOX.readLocalSave();
     if (!obj) return;
     if (BOX.isLocalSaveEnabled()) {
-      BOX.applySave(obj);
+      BOX.applySave(obj, { adopt: false });
       BOX.clearDirty();
       UI.refresh();
       syncSettingToggles();
@@ -382,7 +382,7 @@
     }
     $("restoreBanner").classList.remove("hidden");
     $("restoreYes").addEventListener("click", () => {
-      BOX.applySave(obj); BOX.clearDirty(); UI.refresh(); syncSettingToggles();
+      BOX.applySave(obj, { adopt: false }); BOX.clearDirty(); UI.refresh(); syncSettingToggles();
       $("restoreBanner").classList.add("hidden");
     });
     $("restoreNo").addEventListener("click", () => $("restoreBanner").classList.add("hidden"));
