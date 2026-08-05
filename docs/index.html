@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MHGU Equipment Box</title>
+<link rel="icon" type="image/png" href="assets/icons/icon_talisman_r1.png">
+<link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+<div id="app">
+
+  <!-- Title bar -->
+  <header class="titlebar titlebar-header">
+    <img class="title-icon" src="assets/icons/icon_great_sword.png" alt="">
+    <h1>MHGU Equipment Box</h1>
+    <span id="capacityPill" class="progress-pill" title="Slots used in this box">0 / 2000</span>
+    <button id="saveBtn"   class="btn tiny">Save <span id="dirtyDot" class="dirty-dot hidden">●</span></button>
+    <button id="saveAsBtn" class="btn tiny">Save As…</button>
+    <button id="openBtn"   class="btn tiny">Open…</button>
+    <input type="file" id="importFile" accept=".json,application/json" class="hidden">
+    <input type="file" id="trackerFile" accept=".json,application/json" class="hidden">
+    <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">&#9881;</button>
+    <button id="aboutBtn" class="icon-btn" title="About / Attributions" aria-label="About">&#9432;</button>
+  </header>
+
+  <!-- Box toolbar -->
+  <div class="box-nav">
+    <div class="box-nav-row">
+      <div class="box-switch" id="boxSwitch">
+        <button type="button" data-box="player" class="active">Hunter</button>
+        <button type="button" data-box="palico">Palico</button>
+      </div>
+
+      <button id="prevPage" class="nav-btn">&lsaquo; Prev</button>
+      <span id="pageIndicator" class="page-indicator">Page 1 / 20</span>
+      <button id="nextPage" class="nav-btn">Next &rsaquo;</button>
+
+      <span id="moveHint" class="move-hint hidden"></span>
+
+      <div class="box-nav-sort">
+        <select id="sortKey" class="mini-select">
+          <option value="">— Sort by —</option>
+          <option value="type">Type</option>
+          <option value="rarity">Rarity</option>
+          <option value="name">Name</option>
+          <option value="id">ID</option>
+          <option value="ingame">In Game</option>
+        </select>
+        <button id="sortDir" class="nav-btn" title="Toggle sort direction" disabled>Asc ↑</button>
+        <button id="applySort" class="nav-btn" disabled>Apply Sort</button>
+        <button id="undoSort" class="nav-btn hidden" title="Undo the last sort">Undo Sort</button>
+        <button id="selectMode" class="nav-btn">Select Mode</button>
+      </div>
+    </div>
+
+    <div class="box-nav-actions">
+      <span id="selectHint" class="move-hint hidden"></span>
+      <button id="pasteBtn" class="nav-btn" disabled>Paste Selection</button>
+      <button id="clearClipBtn" class="nav-btn" disabled>Clear Saved Selection</button>
+      <button id="importTrackerBtn" class="nav-btn" title="Fill the box from a Collection Tracker save">Import Collection…</button>
+      <button id="clearBoxBtn" class="nav-btn">Empty Box</button>
+    </div>
+  </div>
+
+  <!-- Box -->
+  <div class="box-layout">
+    <div class="box-grid-area">
+      <div id="grid" class="box-grid compact"></div>
+      <div class="grid-legend">
+        Click a slot to inspect · Double-click to edit · <kbd>Shift</kbd>+click swaps ·
+        <kbd>Ctrl</kbd>+click copies · <kbd>Q</kbd>/<kbd>E</kbd> pages · arrows or <kbd>WASD</kbd> move
+      </div>
+    </div>
+    <aside id="detailPanel" class="box-detail-panel"></aside>
+  </div>
+</div>
+
+<!-- Slot editor -->
+<div id="editModal" class="modal hidden">
+  <div class="modal-card equip-modal">
+    <div id="editOverlay" class="modal-leave-overlay hidden"></div>
+    <h2 id="editTitle">Edit slot</h2>
+    <div id="editBody"></div>
+    <div class="row end gap modal-actions">
+      <button id="editSave" class="btn">Save</button>
+      <button id="editClear" class="btn danger">Clear slot</button>
+      <button id="editCancel" class="btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm -->
+<div id="confirmModal" class="modal hidden">
+  <div class="modal-card">
+    <h2 id="confirmTitle">Confirm</h2>
+    <div id="confirmBody"></div>
+    <div class="row end gap">
+      <button id="confirmOk" class="btn">OK</button>
+      <button id="confirmCancel" class="btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Collection import -->
+<div id="importModal" class="modal hidden">
+  <div class="modal-card wide">
+    <h2>Import from Collection Tracker</h2>
+    <div id="importBody"></div>
+    <div class="row end gap">
+      <button id="importGo" class="btn">Place items</button>
+      <button id="importCancel" class="btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- About / Attributions -->
+<div id="aboutModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>About / Attributions</h2>
+    <p>An unofficial, non-commercial fan tool for planning your MHGU equipment box. The
+      layout mirrors the game: <strong>2000 hunter slots</strong> and <strong>1000 Palico slots</strong>,
+      in pages of 100.</p>
+    <p><strong>Equipment data:</strong> by way of the
+      <a href="https://github.com/redacted/mhgu-editor" target="_blank" rel="noopener">mhgu-editor</a>
+      project's data files, which derive from
+      <a href="https://mhgu.kiranico.com" target="_blank" rel="noopener">Kiranico</a>.</p>
+    <p><strong>English item, skill and equipment names:</strong>
+      <a href="https://github.com/JoeLago/MHGUDB-iOS" target="_blank" rel="noopener">MHGUDB-iOS</a> (MIT) &amp;
+      <a href="https://github.com/gatheringhallstudios/MHGenDatabase" target="_blank" rel="noopener">gatheringhallstudios</a>
+      community database. The game files store names in Japanese only, so the English naming
+      throughout this tool comes from their work.</p>
+    <p><strong>Equipment icons:</strong>
+      <a href="https://monsterhunterwiki.org" target="_blank" rel="noopener">monsterhunterwiki.org</a> —
+      licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>;
+      adaptations shared under the same licence.</p>
+    <p><strong>Menu textures and font:</strong> carried over from the MHGU Collection Tracker.</p>
+    <p class="muted">Monster Hunter content is owned by Capcom. This tool is not affiliated
+      with or endorsed by Capcom.</p>
+    <div class="row end gap">
+      <button id="aboutClose" class="btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div id="settingsModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Settings</h2>
+
+    <div class="set-section">
+      <div class="set-title">Storage</div>
+      <div class="set-row">
+        <div class="set-label">Save in this browser
+          <span class="set-hint">Keeps your box here so it loads automatically. Use Save to a file for backups or another device.</span></div>
+        <button type="button" class="toggle" id="localSaveToggle" role="switch" aria-checked="true" aria-label="Save in this browser"></button>
+      </div>
+      <button id="clearLocalBtn" class="btn tiny">Clear browser save</button>
+    </div>
+
+    <div class="set-section">
+      <div class="set-title">Interaction</div>
+      <div class="set-row">
+        <div class="set-label">Confirm before sorting
+          <span class="set-hint">Sorting reorders the whole box at once.</span></div>
+        <button type="button" class="toggle" id="confirmSortToggle" role="switch" aria-checked="true" aria-label="Confirm before sorting"></button>
+      </div>
+      <div class="set-row">
+        <div class="set-label">Click outside a dialog to close it
+          <span class="set-hint">Off by default so a stray click can't discard an edit.</span></div>
+        <button type="button" class="toggle" id="backdropCloseToggle" role="switch" aria-checked="false" aria-label="Click outside a dialog to close it"></button>
+      </div>
+    </div>
+
+    <div class="set-section">
+      <div class="set-title">Theme</div>
+      <div id="swatches" class="swatches"></div>
+    </div>
+
+    <div class="row end gap">
+      <button id="settingsClose" class="btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Restore-session banner -->
+<div id="restoreBanner" class="restore-banner hidden">
+  <span>An unsaved box from your last session was found.</span>
+  <button id="restoreYes" class="btn tiny">Restore</button>
+  <button id="restoreNo" class="btn tiny">Dismiss</button>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="data/names.js?v=1"></script>
+<script src="data/rarity.js?v=1"></script>
+<script src="data/slots.js?v=1"></script>
+<script src="data/levels.js?v=1"></script>
+<script src="data/skills.js?v=1"></script>
+<script src="data/gender.js?v=1"></script>
+<script src="db.js?v=1"></script>
+<script src="box.js?v=1"></script>
+<script src="edit.js?v=1"></script>
+<script src="ui.js?v=1"></script>
+<script src="app.js?v=1"></script>
+</body>
+</html>
