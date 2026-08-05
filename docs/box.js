@@ -15,6 +15,11 @@ window.BOX = (function () {
 
   const SAVE_APP = "mhgu-equipment-box";
   const SAVE_VERSION = 1;
+  const TRACKER_APP = "mhgu-collection-tracker";
+  // When the open file is a collection-tracker save, the box lives under this
+  // key inside it and everything else in the envelope is carried through
+  // untouched, so one file can hold both apps' data.
+  const BOX_KEY = "box";
   const AUTOSAVE_KEY = "mhgu-box-autosave";
   const LOCAL_ENABLED_KEY = "mhgu-box-local";
   const SETTINGS_KEY = "mhgu-box-settings";
@@ -268,11 +273,13 @@ window.BOX = (function () {
       e.bowgun_attachments = { mod_bit: o.bg[0] | 0, variable_zoom: !!o.bg[1] };
     return e;
   }
-  function serializeSave() {
-    const out = {
-      app: SAVE_APP, version: SAVE_VERSION, savedAt: new Date().toISOString(),
-      settings: Object.assign({}, settings),
-    };
+  // The envelope of a tracker file this box came from, minus its `box` key.
+  // Null when working in the box's own format.
+  let host = null;
+  const isHosted = () => host !== null;
+
+  function boxPayload() {
+    const out = {};
     for (const kind of ["player", "palico"]) {
       const entries = {};
       const arr = boxes[kind];
@@ -281,12 +288,37 @@ window.BOX = (function () {
     }
     return out;
   }
+  function serializeSave() {
+    const payload = boxPayload();
+    // Hosted in a tracker file: hand back that whole file with only the box
+    // section rewritten, so the collection half survives untouched.
+    if (host) {
+      const out = Object.assign({}, host);
+      out[BOX_KEY] = Object.assign({ version: SAVE_VERSION }, payload);
+      return out;
+    }
+    return Object.assign(
+      { app: SAVE_APP, version: SAVE_VERSION, savedAt: new Date().toISOString(),
+        settings: Object.assign({}, settings) },
+      payload);
+  }
+  // A tracker file is a valid box file too — the box just lives one level in.
+  const isTrackerFile = obj => !!obj && typeof obj === "object" && obj.app === TRACKER_APP;
+  // Where the box data sits in either format.
+  const boxSectionOf = obj => (isTrackerFile(obj) ? obj[BOX_KEY] : obj);
+
   function validateSave(obj) {
     if (!obj || typeof obj !== "object") return "Not a valid file.";
-    if (obj.app !== SAVE_APP) return "This file isn't an MHGU Equipment Box save.";
-    if (!Number.isInteger(obj.version) || obj.version > SAVE_VERSION) return "This save was made with a newer version.";
+    if (obj.app !== SAVE_APP && !isTrackerFile(obj))
+      return "This file isn't an MHGU Equipment Box or Collection Tracker save.";
+    if (!Number.isInteger(obj.version) || (obj.app === SAVE_APP && obj.version > SAVE_VERSION))
+      return "This save was made with a newer version.";
+    // A tracker file with no box section yet is fine — it just opens empty.
+    const section = boxSectionOf(obj);
+    if (isTrackerFile(obj) && section == null) return null;
+    if (section == null || typeof section !== "object") return "Box data is malformed.";
     for (const kind of ["player", "palico"]) {
-      const b = obj[kind];
+      const b = section[kind];
       if (b == null) continue;
       if (typeof b !== "object" || typeof b.entries !== "object" || b.entries === null) return "Box data is malformed.";
       for (const k in b.entries) {
@@ -295,14 +327,22 @@ window.BOX = (function () {
         if (!e || typeof e !== "object" || !Number.isInteger(e.t)) return "Box data is malformed.";
       }
     }
-    if (obj.player == null && obj.palico == null) return "Save file contains no box data.";
+    if (section.player == null && section.palico == null) return "Save file contains no box data.";
     return null;
   }
   function applySave(obj) {
+    const section = boxSectionOf(obj) || {};
+    // Remember the rest of a tracker envelope so saving writes it back whole.
+    if (isTrackerFile(obj)) {
+      host = Object.assign({}, obj);
+      delete host[BOX_KEY];
+    } else {
+      host = null;
+    }
     for (const kind of ["player", "palico"]) {
       const arr = boxes[kind];
       arr.fill(null);
-      const b = obj[kind];
+      const b = section[kind];
       if (!b || !b.entries) continue;
       for (const k in b.entries) {
         const i = Number(k);
@@ -315,6 +355,24 @@ window.BOX = (function () {
     saveSettings();
     sortUndo = null;
     emit("change");
+  }
+  // Adopt a tracker file as the host without disturbing the current box —
+  // used by the Import Collection flow so the import can be saved back into the
+  // same file it came from.
+  function adoptHost(obj) {
+    if (!isTrackerFile(obj)) return false;
+    host = Object.assign({}, obj);
+    delete host[BOX_KEY];
+    touched();
+    return true;
+  }
+  // Go back to writing a standalone box file. Otherwise, once a tracker file is
+  // open there is no way out of it short of opening a box file you already have.
+  function detachHost() {
+    if (!host) return false;
+    host = null;
+    touched();
+    return true;
   }
   function reset() {
     boxes.player.fill(null);
@@ -435,6 +493,7 @@ window.BOX = (function () {
     copyToClipboard, cutToClipboard, pasteClipboard, clipboardSize, clearClipboard,
     sortBox, canUndoSort, undoSort,
     serializeSave, validateSave, applySave, reset,
+    isTrackerFile, boxSectionOf, isHosted, adoptHost, detachHost,
     isDirty, clearDirty, on,
     scheduleAutosave, flushAutosave, readLocalSave,
     setLocalSaveEnabled, isLocalSaveEnabled, clearLocalSave,
