@@ -7,6 +7,8 @@ Palico slots**, laid out in pages of 100, with every slot holding a real piece
 
 You lay the box out by hand. Nothing needs to be read off a console.
 
+**Live:** https://armoredraven17.github.io/mhgu-equipment-box/ *(GitHub Pages, served from `docs/`)*
+
 *Companion to the [MHGU Collection Tracker](https://github.com/ArmoredRaven17/mhgu-collection-tracker),
 which tracks what you own; this tracks where it sits.*
 
