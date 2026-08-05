@@ -113,12 +113,20 @@ for (const kind of ["a", "w", "p"])
 const slots = { a: {}, w: {} };
 const levels = { aMax: {}, wMax: {}, wNames: {} };
 
+// The game's table records a piece's upgrade levels against the canonical
+// (male) id only; its female counterpart reads back as 1. Those are the same
+// piece, so the pairing fills them in — see the pass after the gender section.
+const armorMaxStats = { table: 0, fromPair: 0, byRarity: 0, unresolved: 0 };
+
 for (const type of Object.keys(ARMOR_SLOT_KEY)) {
   slots.a[type] = {};
   for (const [id, n] of Object.entries(ARMOR_SLOTS[type] || {})) if (n) slots.a[type][id] = n;
+
   levels.aMax[type] = {};
-  for (const [id, max] of Object.entries(ARMOR_LEVELS[ARMOR_LEVEL_KEY[type]] || {}))
-    if (max > 1) levels.aMax[type][id] = max;
+  const table = ARMOR_LEVELS[ARMOR_LEVEL_KEY[type]] || {};
+  for (const [id, max] of Object.entries(table)) {
+    if (max > 1) { levels.aMax[type][id] = max; armorMaxStats.table++; }
+  }
 }
 
 for (const [type] of WEAPON_TYPES) {
@@ -229,6 +237,42 @@ for (const [type, key] of Object.entries(ARMOR_SLOT_KEY)) {
   }
 }
 
+// ── Armor upgrade levels: fill the gaps left by the game's table ───────────
+// A female variant carries no levels of its own, so it takes its pair's. For
+// anything still unresolved, the editor's rarity rule — which reproduces the
+// real table exactly on every id where both are available, so it is a
+// measurement rather than a guess.
+const DEVIANT_R11_SHORT = ["Nightcloak", "Rustrazor", "Soulseer", "Boltreaver", "Elderfrost", "Bloodbath"];
+function armorMaxByRarity(name, r) {
+  if (r === 11) return DEVIANT_R11_SHORT.some(p => name.startsWith(p)) ? 5 : 15;
+  if (r === 1 || r === 4 || r === 5) return 12;
+  if (r === 2 || r === 3 || r === 6 || r === 7) return 10;
+  if (r === 8) return 7;
+  if (r === 9 || r === 10) return 6;
+  return 1;
+}
+// Cross-check the rule against the table before relying on it.
+let ruleChecked = 0, ruleDisagreed = 0;
+for (const type of Object.keys(ARMOR_SLOT_KEY)) {
+  for (const [id, max] of Object.entries(levels.aMax[type])) {
+    const name = ARMOR[ARMOR_SLOT_KEY[type]][id];
+    if (!name) continue;
+    ruleChecked++;
+    if (armorMaxByRarity(name, rarity.a[type][id] || 0) !== max) ruleDisagreed++;
+  }
+}
+for (const type of Object.keys(ARMOR_SLOT_KEY)) {
+  for (const [rawId, name] of Object.entries(ARMOR[ARMOR_SLOT_KEY[type]])) {
+    if (levels.aMax[type][rawId] !== undefined) continue;
+    const mate = pair[type][rawId];
+    const fromPair = mate !== undefined ? levels.aMax[type][mate] : undefined;
+    if (fromPair > 1) { levels.aMax[type][rawId] = fromPair; armorMaxStats.fromPair++; continue; }
+    const guess = armorMaxByRarity(name, rarity.a[type][rawId] || 0);
+    if (guess > 1) { levels.aMax[type][rawId] = guess; armorMaxStats.byRarity++; }
+    else armorMaxStats.unresolved++;
+  }
+}
+
 // ── Kinsects ───────────────────────────────────────────────────────────────
 // A kinsect_id is this list's position + 1, matching the editor. `ig` maps an
 // Insect Glaive's equip_id to the kinsect tree ("Cutting" / "Blunt") it can take;
@@ -283,6 +327,11 @@ console.log(`  skills       ${Object.keys(skillsOut.sk).length}`);
 console.log(`  gendered     ${count(gender)} (${count(pair)} paired)`);
 console.log(`  kinsects     ${kinsects.length} (${kinsects.filter(k => k.dlc).length} DLC-locked), ` +
   `${Object.keys(IG_KINSECT_TYPE).length} glaives mapped`);
+console.log(`  armor levels ${armorMaxStats.table} from the game's table, ` +
+  `${armorMaxStats.fromPair} inherited from a gender pair, ${armorMaxStats.byRarity} by rarity, ` +
+  `${armorMaxStats.unresolved} left at 1`);
+console.log(`  rarity rule  agrees with the table on ${ruleChecked - ruleDisagreed} of ${ruleChecked} ids` +
+  (ruleDisagreed ? "  <-- WARNING: no longer a safe fallback" : ""));
 
 // Cross-checks. These are the assumptions the app is built on; if the upstream
 // data shifts under us they should fail loudly here rather than silently render
