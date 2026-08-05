@@ -102,7 +102,13 @@ kbd{
   background-size:auto,contain 100%;background-position:left center;background-repeat:repeat
 }
 .box-nav-actions > *{flex-shrink:0}
-.box-nav-actions .move-hint{flex-wrap:nowrap;white-space:nowrap;margin-right:auto}
+.box-nav-actions .move-hint{flex-wrap:nowrap;white-space:nowrap}
+/* The standing buttons stay right-aligned whether or not Select Mode's hint is
+   showing, so they never move under the pointer. margin-left:auto rather than
+   justify-content:flex-end on the row: an auto margin collapses to zero once
+   the content overflows, so the row still scrolls from its left edge instead of
+   pushing the start of it out of reach. */
+.box-nav-group{display:flex;gap:6px;align-items:center;margin-left:auto}
 
 /* Fixed line-height: the MHFU font lacks some glyphs, and letting a fallback
    font set the line box made buttons containing one taller than their
