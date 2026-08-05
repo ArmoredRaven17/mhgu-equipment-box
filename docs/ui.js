@@ -368,6 +368,34 @@ window.UI = (function () {
 
     // Decorations and what they contribute. Palico gear can never take any, so
     // it gets no section rather than an empty one.
+    // Kinsect (Insect Glaive)
+    if (DB.isIG(t) && e.kinsect_id) {
+      const kd = DB.kinsect(e.kinsect_id);
+      const st = e.kinsect_stats || DB.defaultKinsectStats(e.kinsect_id);
+      h += `<div class="detail-section-title">Kinsect</div>`;
+      if (kd) {
+        h += `<div class="ks-name">${esc(kd.n)} <span class="ks-type">(${esc(kd.t)})</span></div>`;
+        h += EDIT.radarSvg(st);
+        const els = DB.ksElements(st);
+        if (els.length) h += `<div class="ks-elements">` + els.map(el =>
+          `<span class="ks-el" style="color:${el.color}">${el.name} Lv.${el.lv + 1}</span>`).join("") + `</div>`;
+        h += row("Kinsect level", `${DB.ksLevel(st, e.kinsect_id)} / ${DB.KS_MAX_LEVEL}`);
+        h += row("Power", String(DB.powerStat(st[DB.KS.powerLv])));
+        h += row("Weight", String(DB.weightStat(st[DB.KS.weightLv])));
+        h += row("Speed", String(DB.speedStat(st[DB.KS.speedLv])));
+        if (kd.ks) h += row("Kinsect skills", esc(kd.ks.join(", ")));
+        if (kd.es) h += row("Extract skills", esc(kd.es.join(", ")));
+      } else h += `<div class="detail-note">Unknown kinsect #${e.kinsect_id}.</div>`;
+    }
+
+    // Bowgun attachments
+    if (DB.isBowgun(t)) {
+      const bg = e.bowgun_attachments || { mod_bit: 0, variable_zoom: false };
+      h += `<div class="detail-section-title">Attachments</div>`;
+      h += row("Mod", DB.bowgunModLabel(bg.mod_bit, DB.isLBG(t)));
+      h += row("Scope", bg.variable_zoom ? "Variable Zoom" : "Fixed Zoom");
+    }
+
     if (!DB.isPalico(t)) {
       const cap = DB.entryDecoSlots(e);
       h += `<div class="detail-section-title">Decorations</div>`;

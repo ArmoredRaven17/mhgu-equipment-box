@@ -310,6 +310,32 @@ fieldset.edit-group.transmog legend{color:#44aaff;opacity:1}
 .slots-used{font-size:11px;opacity:.75;margin-top:2px;font-variant-numeric:tabular-nums}
 .slots-used.over{color:var(--negative);opacity:1}
 
+/* Kinsects */
+.ks-locked{
+  font-size:13px;color:#c8c8e0;background:#00000030;border:1px solid var(--line);
+  border-radius:6px;padding:6px 9px
+}
+.ks-level-row{
+  display:flex;justify-content:space-between;align-items:baseline;font-size:12px;
+  opacity:.85;margin-bottom:2px
+}
+.ks-level-row strong{font-size:15px;font-variant-numeric:tabular-nums}
+.kinsect-radar{display:block;width:170px;max-width:100%;margin:0 auto}
+.ks-stat-grid{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.ks-stat-row{display:grid;grid-template-columns:1fr 68px 44px;gap:8px;align-items:center}
+.ks-stat-name{font-size:12px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ks-stat-row input{
+  background:var(--bg2);color:var(--text);border:1px solid var(--line);border-radius:5px;
+  padding:3px 6px;font-size:12px;width:100%;font-variant-numeric:tabular-nums
+}
+.ks-stat-val{
+  font-size:12px;opacity:.7;text-align:right;font-variant-numeric:tabular-nums
+}
+.ks-name{font-size:15px;font-weight:600;text-align:center;margin:2px 0}
+.ks-type{opacity:.6;font-weight:400;font-size:12px}
+.ks-elements{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:2px 0 6px}
+.ks-el{font-size:12px;font-weight:600}
+
 /* Typeahead */
 .name-search{position:relative}
 .name-search input{

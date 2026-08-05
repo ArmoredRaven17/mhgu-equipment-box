@@ -17,6 +17,11 @@ which tracks what you own; this tracks where it sits.*
 - **Full slot fidelity** — pick a piece and its upgrade level, socket decorations
   against the slots it actually has, set a transmog appearance, or roll a talisman
   with two skills whose point ranges are clamped to that charm rarity's real table.
+- **Kinsects and bowgun mods** — an Insect Glaive carries a kinsect from its own
+  Cutting or Blunt tree (DLC glaives are locked to theirs), with power, weight,
+  speed and the five elements fed up against the game's two 36-point pools and its
+  own base stats as the floor; the level follows from the total. Bowguns take a
+  mod and a scope, with Silencer restricted to Light and Shield to Heavy.
 - **Box management** — swap and copy between slots, multi-select to move, copy,
   delete or stash a run of slots, and sort the whole box by type, rarity, name, id
   or the game's own order (with one level of undo).
