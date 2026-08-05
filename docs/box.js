@@ -34,7 +34,7 @@ window.BOX = (function () {
   };
   const sizeOf = kind => (kind === "palico" ? PALICO_SIZE : PLAYER_SIZE);
 
-  const settings = { confirmSort: true, backdropClose: false };
+  const settings = { confirmSort: true, backdropClose: false, syncCollection: true };
   let localSaveEnabled = true;
   try { localSaveEnabled = localStorage.getItem(LOCAL_ENABLED_KEY) !== "0"; } catch (e) {}
   try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")); } catch (e) {}
@@ -392,7 +392,9 @@ window.BOX = (function () {
     return { owned, levels: levelsOut, talismans };
   }
   // Merge into a document's collection without removing anything already there.
-  function mergeOwnedInto(doc, derived) {
+  // `levelsFollowBox` makes the box authoritative for the level of a piece it
+  // holds, so lowering one here is reflected rather than ratcheting upward.
+  function mergeOwnedInto(doc, derived, levelsFollowBox) {
     let added = 0;
     doc.owned = doc.owned || { w: {}, a: {}, p: {} };
     doc.levels = doc.levels || { w: {}, a: {}, p: {} };
@@ -408,7 +410,7 @@ window.BOX = (function () {
         const map = doc.levels[k][cat] || (doc.levels[k][cat] = {});
         for (const id in derived.levels[k][cat]) {
           const lv = derived.levels[k][cat][id];
-          if (!map[id] || lv > map[id]) map[id] = lv;
+          if (levelsFollowBox || !map[id] || lv > map[id]) map[id] = lv;
         }
       }
     }
@@ -427,13 +429,13 @@ window.BOX = (function () {
     const doc = isTrackerFile(stored) ? stored
       : { app: TRACKER_APP, version: 2, showDummy: false, settings: {},
           owned: { w: {}, a: {}, p: {} }, levels: { w: {}, a: {}, p: {} } };
-    added = mergeOwnedInto(doc, derived);
+    added = mergeOwnedInto(doc, derived, false);
     doc.savedAt = new Date().toISOString();
     if (localSaveEnabled) {
       doc[BOX_KEY] = Object.assign({ version: SAVE_VERSION }, boxPayload());
       try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(doc)); } catch (e) {}
     }
-    if (host) mergeOwnedInto(host, derived);
+    if (host) mergeOwnedInto(host, derived, false);
     touched();
     return { distinct: total, added: added, talismans: derived.talismans };
   }
@@ -504,6 +506,14 @@ window.BOX = (function () {
     if (!doc || typeof doc !== "object")
       doc = { app: TRACKER_APP, version: 2, owned: { w: {}, a: {}, p: {} }, levels: { w: {}, a: {}, p: {} } };
     doc[BOX_KEY] = Object.assign({ version: SAVE_VERSION }, boxPayload());
+    // Keep the collection in step. Additive on ids — a box export can be partial
+    // (hunter and Palico are separate files), so nothing is ever un-owned from
+    // here — but authoritative on the level of anything the box actually holds.
+    if (settings.syncCollection) {
+      const derived = derivedOwned();
+      mergeOwnedInto(doc, derived, true);
+      if (host) mergeOwnedInto(host, derived, true);
+    }
     doc.savedAt = new Date().toISOString();
     try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(doc)); } catch (e) {}
   }
