@@ -304,6 +304,7 @@
 
   bindModal("aboutBtn", "aboutModal", "aboutClose");
   bindModal("settingsBtn", "settingsModal", "settingsClose");
+  bindModal("helpBtn", "helpModal", "helpClose");
 
   toggleSyncs.push(bindToggle("localSaveToggle", BOX.isLocalSaveEnabled, v => {
     BOX.setLocalSaveEnabled(v);
