@@ -373,12 +373,12 @@ window.UI = (function () {
     if (DB.isTransmogged(e)) {
       h += `<div class="detail-names-row">
         <div class="detail-name-card"><div class="detail-name-card-label">Stat</div>
-          <div class="detail-name">${esc(DB.displayName(e))}</div></div>
+          <div class="detail-name">${esc(DB.displayName(e))}${genderPill(e)}</div></div>
         <div class="detail-name-card-arrow">→</div>
         <div class="detail-name-card transmog-card"><div class="detail-name-card-label">Visual</div>
           <div class="detail-name">${esc(DB.transmogName(e))}</div></div></div>`;
     } else {
-      h += `<div class="detail-name">${esc(DB.displayName(e))}</div>`;
+      h += `<div class="detail-name">${esc(DB.displayName(e))}${genderPill(e)}</div>`;
     }
 
     h += `<div class="detail-actions">
@@ -395,10 +395,7 @@ window.UI = (function () {
       h += row("Level", max > 1 ? `LV ${e.level + 1} / ${max}` : "LV 1");
     }
     if (rar > 0) h += row("Rarity", `<span class="rarity-badge rarity-${rar}">${DB.rarityLabel(rar)}</span>`, true);
-    if (DB.isArmor(t)) {
-      const g = DB.genderOf(t, e.equip_id);
-      h += row("Gender", g === 0 ? "Male" : g === 1 ? "Female" : "Both");
-    }
+
 
     // Talisman rolls
     if (t === 6 && e.talisman) {
@@ -485,6 +482,13 @@ window.UI = (function () {
       }
     }));
   }
+  // 0 male-only, 1 female-only, 2 either. Most armor is unrestricted, so only a
+  // restriction is worth marking — same pills as the collection tracker.
+  const GENDER_LABEL = { 0: "Male Only", 1: "Female Only" };
+  const genderPill = e => (DB.isArmor(e.equip_type)
+    ? (GENDER_LABEL[DB.genderOf(e.equip_type, e.equip_id)]
+        ? ` <span class="gender-pill g${DB.genderOf(e.equip_type, e.equip_id)}">${GENDER_LABEL[DB.genderOf(e.equip_type, e.equip_id)]}</span>` : "")
+    : "");
   const signed = n => `<span class="${n > 0 ? "pos" : n < 0 ? "neg" : ""}">${n > 0 ? "+" : ""}${n}</span>`;
   const row = (k, v, raw) =>
     `<div class="stat-row"><span class="k">${raw ? k : esc(k)}</span><span class="v">${raw ? v : esc(v)}</span></div>`;
