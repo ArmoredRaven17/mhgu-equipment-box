@@ -284,6 +284,17 @@ kbd{
   font-size:19px;font-weight:700;text-align:center;line-height:1.25;
   word-break:break-word;margin:2px 0 4px
 }
+/* Gender restriction, matching the collection tracker. Unrestricted armor gets
+   nothing — a pill on most of the catalogue would be noise. */
+.gender-pill{
+  display:inline-block;vertical-align:middle;margin-left:6px;
+  padding:1px 7px;border-radius:9px;
+  font-size:10px;line-height:1.5;font-weight:600;letter-spacing:.02em;white-space:nowrap
+}
+.gender-pill.g0{background:#12365e;color:#8fc6ff;border:1px solid #2b6096}
+.gender-pill.g1{background:#5a1830;color:#ff9ec0;border:1px solid #94304f}
+.detail-name-card .gender-pill{font-size:9px;padding:0 6px;margin-left:4px}
+
 .detail-names-row{display:flex;align-items:stretch;gap:6px;margin:4px 0}
 .detail-name-card{
   flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;
