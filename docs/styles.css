@@ -481,3 +481,11 @@ fieldset.edit-group.transmog legend{color:#44aaff;opacity:1}
   .box-detail-panel{flex:none;width:auto;border-left:none;border-top:1px solid var(--line)}
   .box-nav-sort{margin-left:0}
 }
+
+/* Other MHGU apps modal */
+.app-links{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:10px}
+.app-links li{border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:#ffffff08}
+.app-links li.current{opacity:.72}
+.app-links a,.app-name{font-weight:600;font-size:14px}
+.app-here{font-weight:400;font-size:11px;opacity:.7;border:1px solid var(--line);border-radius:6px;padding:1px 7px;margin-left:7px}
+.app-desc{display:block;margin-top:3px;font-size:12px;opacity:.8;line-height:1.4}
