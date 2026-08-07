@@ -85,11 +85,6 @@ Most of this project's code — the app, `scripts/build-data.mjs`, and this READ
 coding tool, working from the author's direction and reviewed before landing.
 Commits made that way carry a `Co-Authored-By: Claude` trailer.
 
-**The equipment data is not AI-generated.** It is compiled from the sources
-credited in [NOTICE.md](NOTICE.md), and the generator prints cross-checks that
-fail loudly if the upstream data shifts shape. The AI wrote the generator; it
-did not supply the numbers.
-
 ## Licensing
 
 Code is MIT (see [LICENSE](LICENSE)). Game data and icons come from third
