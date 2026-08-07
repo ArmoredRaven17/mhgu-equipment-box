@@ -213,6 +213,7 @@
   });
 
   bindModal("aboutBtn", "aboutModal", "aboutClose");
+  bindModal("linksBtn", "linksModal", "linksClose");
   bindModal("settingsBtn", "settingsModal", "settingsClose");
   bindModal("helpBtn", "helpModal", "helpClose");
 
