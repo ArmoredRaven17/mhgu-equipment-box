@@ -104,6 +104,29 @@ Collection Tracker.
 
 ---
 
+## Development — AI assistance
+
+A large share of this project's source code, its data generator, and its
+documentation was written with **[Claude Code](https://claude.com/claude-code)**
+(Anthropic), directed and reviewed by the author. Commits made that way carry a
+`Co-Authored-By: Claude` trailer.
+
+This is disclosed for transparency rather than to satisfy a licence term. The
+project's code remains MIT-licensed (see [LICENSE](LICENSE)).
+
+**No AI-generated content stands in for the attributed data above.** Every
+equipment name, rarity, decoration slot count, upgrade level and charm range in
+[docs/data/](docs/data/) is compiled from the sources credited under *Game
+Data*. The model wrote the generator that reads those sources — it did not
+supply the facts, and nothing in [docs/data/](docs/data/) was authored by a
+model.
+
+A separate and unrelated use of AI applies to the **equipment icons**: the
+Real-ESRGAN upscale described under *Icons*, which is inherited from the
+mhgu-editor project rather than performed here.
+
+---
+
 ## Reporting Misattribution
 
 If a person, project, or organization is misattributed or omitted from this
