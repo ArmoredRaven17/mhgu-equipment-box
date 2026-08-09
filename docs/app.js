@@ -69,6 +69,14 @@
   const darken = (rgb, f) => { const [h, s, l] = rgbToHsl(rgb); return hslToRgb([h, s, clamp01(l * f)]); };
   const lighten = (rgb, b) => { const [h, s, l] = rgbToHsl(rgb); return hslToRgb([h, s, clamp01(l + (1 - l) * b)]); };
   const cssRgb = rgb => `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+  const toWhite = (rgb, t) => rgb.map(v => clamp(v + (255 - v) * t));
+  // WCAG relative luminance, for deciding whether a surface takes light or dark
+  // text. Not the same as HSL lightness: green at L=.5 is far brighter than blue
+  // at L=.5, and the themes span both.
+  const relLum = rgb => {
+    const [r, g, b] = rgb.map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); });
+    return .2126 * r + .7152 * g + .0722 * b;
+  };
 
   function applyTheme(hex) {
     const c = hexRgb(hex), r = document.documentElement.style;
@@ -78,6 +86,28 @@
     r.setProperty("--content-bg", cssRgb(darken(c, .55)));
     r.setProperty("--panel-bg", cssRgb(darken(c, .40)));
     r.setProperty("--bg2", cssRgb(darken(c, .95)));
+    // The box toolbar. --bg2 is only 5% off the raw theme colour, which left the
+    // toolbar washed out on the lighter themes. Deriving its own factor rather
+    // than mixing --bg2 toward black keeps the ordering true on every theme:
+    // these are all lightness scalings of one colour, so .80 < .85 < .95 holds
+    // whatever the theme, and the toolbar stays between the actions strip
+    // beneath it (--bg1) and the panels (--bg2). A fixed mix does not — on the
+    // lightest themes --bg1 and --bg2 are close enough that it overshoots.
+    r.setProperty("--nav-bg", cssRgb(darken(c, .85)));
+    // Toolbar controls, lifted off that bar toward white. A proportional step
+    // like the one above would be 10% of whatever the theme is, which on the
+    // dark themes is a couple of luminance points and invisible; adding white
+    // gives a near-constant gap at both ends of the range. The label colour has
+    // to follow, because on the pale themes — yellow worst at 1.29:1 — a fixed
+    // near-white --text on these was unreadable.
+    const bg2 = darken(c, .95), ctrl = toWhite(bg2, .15);
+    r.setProperty("--control-bg", cssRgb(ctrl));
+    r.setProperty("--control-bg-hover", cssRgb(toWhite(bg2, .28)));
+    // .19 is where the two candidates give equal contrast — solve
+    // 1.05/(L+.05) = (L+.05)/(Ldark+.05) — not .5, which is the intuitive guess
+    // and leaves every mid-luminance theme on light text when dark text would
+    // read far better. Worst case at the crossover is ~4.3:1.
+    r.setProperty("--control-text", relLum(ctrl) > .19 ? "#14141a" : "#f3f3f3");
     r.setProperty("--accent", cssRgb(darken(c, .7)));
     r.setProperty("--accent-hover", cssRgb(lighten(c, .4)));
     try { localStorage.setItem(THEME_KEY, hex); } catch (e) {}

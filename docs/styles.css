@@ -8,7 +8,10 @@
 /* Theme variables set at runtime from the chosen colour (see app.js). */
 :root{
   --bg:#3e3e3e; --bg1:#000; --grid-bg:#141018; --content-bg:#0e0d11; --panel-bg:#141418;
-  --bg2:#333; --accent:#7a7a7a; --accent-hover:#9a9a9a;
+  --bg2:#333; --nav-bg:#2b2b2b; --accent:#7a7a7a; --accent-hover:#9a9a9a;
+  /* Toolbar controls — set per theme in app.js, along with the label colour that
+     stays legible on them. These are the pre-theme defaults. */
+  --control-bg:#4d4d4d; --control-bg-hover:#5c5c5c; --control-text:#f3f3f3;
   --text:#f3f3f3; --text-dim:#fff; --line:#ffffff1f;
   --positive:#7fdc7f; --negative:#f07070;
 }
@@ -80,9 +83,11 @@ kbd{
 .box-nav{
   display:flex;flex-direction:column;gap:6px;padding:7px 14px;flex-shrink:0;
   border-bottom:1px solid var(--line);font-size:12px;
-  background-color:var(--bg2);
+  /* --nav-bg is a step darker than --bg2, set per theme in app.js — see the note
+     there. :root carries the pre-theme default. */
+  background-color:var(--nav-bg);
   background-image:
-    linear-gradient(color-mix(in srgb,var(--bg2) 82%,transparent),color-mix(in srgb,var(--bg2) 82%,transparent)),
+    linear-gradient(color-mix(in srgb,var(--nav-bg) 82%,transparent),color-mix(in srgb,var(--nav-bg) 82%,transparent)),
     url('assets/sidebar-background-texture1.png');
   background-size:auto;background-position:left center;background-repeat:repeat;
 }
@@ -113,25 +118,29 @@ kbd{
 /* Fixed line-height: the MHFU font lacks some glyphs, and letting a fallback
    font set the line box made buttons containing one taller than their
    neighbours — an ellipsis was enough to push a button 3px out of line. */
+/* --control-bg, not a flat white wash: these sit on --nav-bg and need to read as
+   raised on every theme. The select below shares it — the two sit in the same row
+   and used to be styled unrelatedly, the button on #ffffff14 and the select on
+   --bg2. */
 .nav-btn{
-  font-size:11px;line-height:16px;padding:3px 10px;background:#ffffff14;
-  border:1px solid var(--line);border-radius:4px;color:var(--text);cursor:pointer
+  font-size:11px;line-height:16px;padding:3px 10px;background:var(--control-bg);
+  border:1px solid var(--line);border-radius:4px;color:var(--control-text);cursor:pointer
 }
-.nav-btn:not(:disabled):hover{background:#ffffff28}
+.nav-btn:not(:disabled):hover{background:var(--control-bg-hover)}
 .nav-btn:disabled{opacity:.4;cursor:default}
 .nav-btn.active{background:var(--accent-hover);border-color:var(--accent-hover);color:#fff}
 .mini-select{
-  background:var(--bg2);color:var(--text);border:1px solid var(--line);border-radius:4px;
+  background:var(--control-bg);color:var(--control-text);border:1px solid var(--line);border-radius:4px;
   padding:3px 6px;font-size:11px
 }
 .page-indicator{font-variant-numeric:tabular-nums;min-width:96px;text-align:center}
 
 .box-switch{display:flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
 .box-switch button{
-  background:#ffffff10;border:none;color:var(--text);font-size:12px;padding:4px 14px;cursor:pointer
+  background:var(--control-bg);border:none;color:var(--control-text);font-size:12px;padding:4px 14px;cursor:pointer
 }
 .box-switch button.active{background:var(--accent-hover);color:#fff;font-weight:600}
-.box-switch button:not(.active):hover{background:#ffffff24}
+.box-switch button:not(.active):hover{background:var(--control-bg-hover)}
 
 .move-hint{display:flex;align-items:center;gap:6px;color:#8fd0ff;font-size:12px;flex-wrap:wrap}
 .move-hint strong{color:#c8e8ff}
