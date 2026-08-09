@@ -86,28 +86,24 @@
     // beneath it (--bg1) and the panels (--bg2). A fixed mix does not — on the
     // lightest themes --bg1 and --bg2 are close enough that it overshoots.
     r.setProperty("--nav-bg", cssRgb(darken(c, .85)));
-    // Toolbar controls. Offset from the bar rather than set to a fixed lightness:
-    // a fixed one always collides with whichever theme's bar happens to sit at it
-    // — .26 put #4e2fa2's button 1.4 luminance off its bar, invisible. Stepping
-    // from the bar guarantees the gap on all of them.
+    // Every control in the app — toolbar buttons, the sort select, the box
+    // switch, and Save/Save As/Open up in the titlebar — comes off these three,
+    // so they all match wherever they sit and there is one number to move if the
+    // look needs adjusting.
     //
-    // The step goes up from a dark bar and down from a light one, and the .28
-    // switch is what keeps a single near-white label legible: past it, going up
-    // would put the button somewhere white text cannot sit, so it goes down into
-    // the dark instead — which on a light bar reads as strongly as going up does
-    // on a dark one. Saturation is damped throughout because a saturated yellow
-    // at a given lightness is far brighter than a blue at the same lightness.
-    const [ch, cs] = rgbToHsl(c);
-    const barL = rgbToHsl(darken(c, .85))[2];
-    const up = barL < .28;
-    // Both branches cap at .34, not just the upward one: stepping down from a
-    // very light bar still lands high enough that a bright hue there is too pale
-    // for white text — the yellow theme sat at .41 and 3.3:1. The cap only ever
-    // increases the gap from the bar, so it costs nothing.
-    const ctrlL = up ? Math.min(barL + .14, .34) : Math.max(Math.min(barL - .16, .34), .10);
-    const hoverL = up ? Math.min(ctrlL + .07, .49) : Math.max(ctrlL - .07, .05);
-    r.setProperty("--control-bg", cssRgb(hslToRgb([ch, cs * .55, ctrlL])));
-    r.setProperty("--control-bg-hover", cssRgb(hslToRgb([ch, cs * .55, hoverL])));
+    // Measured across all 27 themes. Keeping the label white is what makes one
+    // number workable — the only constraint left is that the surface stays dark
+    // — and .42 is the ceiling: above it a label drops under 4.5:1 on the pale
+    // themes. Worst case on these three is 4.69:1.
+    //
+    // Separation from whatever sits behind them is what it is. On the near black
+    // themes every proportional factor lands within ~1.1:1 of the bar, since
+    // both collapse into the same few luminance values down there. The 1px
+    // --line border delineates a button on those, not the fill — and the
+    // selected state carries an underline for the same reason.
+    r.setProperty("--control-bg", cssRgb(darken(c, .34)));
+    r.setProperty("--control-bg-hover", cssRgb(darken(c, .42)));
+    r.setProperty("--control-active", cssRgb(darken(c, .24)));
     r.setProperty("--accent", cssRgb(darken(c, .7)));
     r.setProperty("--accent-hover", cssRgb(lighten(c, .4)));
     try { localStorage.setItem(THEME_KEY, hex); } catch (e) {}
