@@ -47,8 +47,7 @@ Then open http://localhost:8124/.
 
 ## Regenerating data
 
-The equipment tables are generated from the
-[mhgu-editor](https://github.com/redacted/mhgu-editor) repo's data files
+The equipment tables are generated from the save editor's data files
 (which in turn derive from Kiranico), plus armor upgrade levels from the
 Collection Tracker's `armor_levels.js`:
 
@@ -57,7 +56,7 @@ node scripts/build-data.mjs "C:/Coding Repos/mhgu-editor" --tracker "C:/Coding R
 ```
 
 `--tracker` defaults to a `mhgu-collection-tracker` directory sitting alongside
-the editor repo. This rewrites the six files in `docs/data/` (~490 KB total) and
+the editor directory. This rewrites the six files in `docs/data/` (~490 KB total) and
 prints entry counts plus a set of cross-checks that fail loudly if the upstream
 data shifts shape.
 
