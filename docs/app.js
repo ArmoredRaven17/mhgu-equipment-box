@@ -69,14 +69,6 @@
   const darken = (rgb, f) => { const [h, s, l] = rgbToHsl(rgb); return hslToRgb([h, s, clamp01(l * f)]); };
   const lighten = (rgb, b) => { const [h, s, l] = rgbToHsl(rgb); return hslToRgb([h, s, clamp01(l + (1 - l) * b)]); };
   const cssRgb = rgb => `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
-  const toWhite = (rgb, t) => rgb.map(v => clamp(v + (255 - v) * t));
-  // WCAG relative luminance, for deciding whether a surface takes light or dark
-  // text. Not the same as HSL lightness: green at L=.5 is far brighter than blue
-  // at L=.5, and the themes span both.
-  const relLum = rgb => {
-    const [r, g, b] = rgb.map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); });
-    return .2126 * r + .7152 * g + .0722 * b;
-  };
 
   function applyTheme(hex) {
     const c = hexRgb(hex), r = document.documentElement.style;
@@ -94,20 +86,28 @@
     // beneath it (--bg1) and the panels (--bg2). A fixed mix does not — on the
     // lightest themes --bg1 and --bg2 are close enough that it overshoots.
     r.setProperty("--nav-bg", cssRgb(darken(c, .85)));
-    // Toolbar controls, lifted off that bar toward white. A proportional step
-    // like the one above would be 10% of whatever the theme is, which on the
-    // dark themes is a couple of luminance points and invisible; adding white
-    // gives a near-constant gap at both ends of the range. The label colour has
-    // to follow, because on the pale themes — yellow worst at 1.29:1 — a fixed
-    // near-white --text on these was unreadable.
-    const bg2 = darken(c, .95), ctrl = toWhite(bg2, .15);
-    r.setProperty("--control-bg", cssRgb(ctrl));
-    r.setProperty("--control-bg-hover", cssRgb(toWhite(bg2, .28)));
-    // .19 is where the two candidates give equal contrast — solve
-    // 1.05/(L+.05) = (L+.05)/(Ldark+.05) — not .5, which is the intuitive guess
-    // and leaves every mid-luminance theme on light text when dark text would
-    // read far better. Worst case at the crossover is ~4.3:1.
-    r.setProperty("--control-text", relLum(ctrl) > .19 ? "#14141a" : "#f3f3f3");
+    // Toolbar controls. Offset from the bar rather than set to a fixed lightness:
+    // a fixed one always collides with whichever theme's bar happens to sit at it
+    // — .26 put #4e2fa2's button 1.4 luminance off its bar, invisible. Stepping
+    // from the bar guarantees the gap on all of them.
+    //
+    // The step goes up from a dark bar and down from a light one, and the .28
+    // switch is what keeps a single near-white label legible: past it, going up
+    // would put the button somewhere white text cannot sit, so it goes down into
+    // the dark instead — which on a light bar reads as strongly as going up does
+    // on a dark one. Saturation is damped throughout because a saturated yellow
+    // at a given lightness is far brighter than a blue at the same lightness.
+    const [ch, cs] = rgbToHsl(c);
+    const barL = rgbToHsl(darken(c, .85))[2];
+    const up = barL < .28;
+    // Both branches cap at .34, not just the upward one: stepping down from a
+    // very light bar still lands high enough that a bright hue there is too pale
+    // for white text — the yellow theme sat at .41 and 3.3:1. The cap only ever
+    // increases the gap from the bar, so it costs nothing.
+    const ctrlL = up ? Math.min(barL + .14, .34) : Math.max(Math.min(barL - .16, .34), .10);
+    const hoverL = up ? Math.min(ctrlL + .07, .49) : Math.max(ctrlL - .07, .05);
+    r.setProperty("--control-bg", cssRgb(hslToRgb([ch, cs * .55, ctrlL])));
+    r.setProperty("--control-bg-hover", cssRgb(hslToRgb([ch, cs * .55, hoverL])));
     r.setProperty("--accent", cssRgb(darken(c, .7)));
     r.setProperty("--accent-hover", cssRgb(lighten(c, .4)));
     try { localStorage.setItem(THEME_KEY, hex); } catch (e) {}

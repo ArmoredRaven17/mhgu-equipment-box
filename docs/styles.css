@@ -9,9 +9,9 @@
 :root{
   --bg:#3e3e3e; --bg1:#000; --grid-bg:#141018; --content-bg:#0e0d11; --panel-bg:#141418;
   --bg2:#333; --nav-bg:#2b2b2b; --accent:#7a7a7a; --accent-hover:#9a9a9a;
-  /* Toolbar controls — set per theme in app.js, along with the label colour that
-     stays legible on them. These are the pre-theme defaults. */
-  --control-bg:#4d4d4d; --control-bg-hover:#5c5c5c; --control-text:#f3f3f3;
+  /* Toolbar controls — set per theme in app.js, at a pinned darkness so --text
+     reads on them everywhere. These are the pre-theme defaults. */
+  --control-bg:#424242; --control-bg-hover:#575757;
   --text:#f3f3f3; --text-dim:#fff; --line:#ffffff1f;
   --positive:#7fdc7f; --negative:#f07070;
 }
@@ -118,26 +118,27 @@ kbd{
 /* Fixed line-height: the MHFU font lacks some glyphs, and letting a fallback
    font set the line box made buttons containing one taller than their
    neighbours — an ellipsis was enough to push a button 3px out of line. */
-/* --control-bg, not a flat white wash: these sit on --nav-bg and need to read as
-   raised on every theme. The select below shares it — the two sit in the same row
-   and used to be styled unrelatedly, the button on #ffffff14 and the select on
-   --bg2. */
+/* --control-bg, not a white wash over the bar: these need to separate from
+   --nav-bg on every theme while keeping one label colour, so they hold a fixed
+   darkness and take only the theme's hue — see the note in app.js. The select
+   and the box switch share it; the three used to be styled unrelatedly, the
+   button on #ffffff14, the switch on #ffffff10 and the select on --bg2. */
 .nav-btn{
   font-size:11px;line-height:16px;padding:3px 10px;background:var(--control-bg);
-  border:1px solid var(--line);border-radius:4px;color:var(--control-text);cursor:pointer
+  border:1px solid var(--line);border-radius:4px;color:var(--text);cursor:pointer
 }
 .nav-btn:not(:disabled):hover{background:var(--control-bg-hover)}
 .nav-btn:disabled{opacity:.4;cursor:default}
 .nav-btn.active{background:var(--accent-hover);border-color:var(--accent-hover);color:#fff}
 .mini-select{
-  background:var(--control-bg);color:var(--control-text);border:1px solid var(--line);border-radius:4px;
+  background:var(--control-bg);color:var(--text);border:1px solid var(--line);border-radius:4px;
   padding:3px 6px;font-size:11px
 }
 .page-indicator{font-variant-numeric:tabular-nums;min-width:96px;text-align:center}
 
 .box-switch{display:flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
 .box-switch button{
-  background:var(--control-bg);border:none;color:var(--control-text);font-size:12px;padding:4px 14px;cursor:pointer
+  background:var(--control-bg);border:none;color:var(--text);font-size:12px;padding:4px 14px;cursor:pointer
 }
 .box-switch button.active{background:var(--accent-hover);color:#fff;font-weight:600}
 .box-switch button:not(.active):hover{background:var(--control-bg-hover)}
