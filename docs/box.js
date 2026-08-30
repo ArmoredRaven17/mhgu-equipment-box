@@ -34,7 +34,7 @@ window.BOX = (function () {
   };
   const sizeOf = kind => (kind === "palico" ? PALICO_SIZE : PLAYER_SIZE);
 
-  const settings = { confirmSort: true, backdropClose: false, syncCollection: true };
+  const settings = { confirmSort: true, backdropClose: false, syncCollection: false };
   let localSaveEnabled = true;
   try { localSaveEnabled = localStorage.getItem(LOCAL_ENABLED_KEY) !== "0"; } catch (e) {}
   try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")); } catch (e) {}
