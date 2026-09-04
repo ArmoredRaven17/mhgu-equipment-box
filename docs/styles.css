@@ -380,7 +380,7 @@ kbd{
 .modal-card.wide{width:min(600px,92vw)}
 .modal-card h2{margin:0 0 14px;font-size:18px}
 .modal-card p{margin:0 0 10px;line-height:1.45}
-.modal-card a{color:var(--accent-hover)}
+.modal-card a{color:color-mix(in srgb, hsl(from var(--accent) calc(h + 180) 75% 60%) 50%, var(--text))}
 .modal-card .muted{color:var(--text-dim);font-size:13px;opacity:.75}
 .row{display:flex;align-items:center}
 .row.gap{gap:8px}
